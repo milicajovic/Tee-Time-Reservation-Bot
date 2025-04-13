@@ -28,19 +28,20 @@ app = Flask(__name__)
 
 # Get the connection string for Azurite (or your Azure Storage account) from the .env file
 AZURE_CONNECTION_STRING = os.getenv("AZURITE_CONNECTION_STRING")
+print("AZURITE_CONNECTION_STRING =", os.getenv("AZURITE_CONNECTION_STRING"))
 
 # Table name for reservations
 TABLE_NAME = "reservations"
 
 def get_table_client():
-    service_client = TableServiceClient.from_connection_string(conn_str=AZURE_CONNECTION_STRING)
+    service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
     return service_client.get_table_client(table_name=TABLE_NAME)
 
 def init_table():
     """
     Create the reservations table if it does not exist.
     """
-    service_client = TableServiceClient.from_connection_string(conn_str=AZURE_CONNECTION_STRING)
+    service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
     try:
         service_client.create_table(table_name=TABLE_NAME)
         logging.info("Table created successfully.")

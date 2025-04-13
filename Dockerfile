@@ -156,5 +156,7 @@ EXPOSE 8080
 # Set the Python path so your application is discoverable
 ENV PYTHONPATH=/app
 
-# Run the Flask application using gunicorn.
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+ENV FLASK_APP=app.py
+ENV FLASK_ENV=production
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "2", "app:app"]
