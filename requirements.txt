@@ -1,0 +1,12 @@
+flask
+gunicorn
+python-dotenv
+seleniumbase==4.37.1
+selenium
+pytz
+Werkzeug
+click
+itsdangerous
+Jinja2
+MarkupSafe
+azure-data-tables
