@@ -22,15 +22,15 @@ jobs:
     - name: Log in to registry
       uses: docker/login-action@v2
       with:
-        registry: https://almirs.azurecr.io/
-        username: ${{ secrets.AzureAppService_ContainerUsername_dd3dc2535df540fd987aee4bc2a22d6b }}
-        password: ${{ secrets.AzureAppService_ContainerPassword_09c4c88e858942e3a944126e8056ad8d }}
+        registry: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
 
     - name: Build and push container image to registry
       uses: docker/build-push-action@v3
       with:
         push: true
-        tags: almirs.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_dd3dc2535df540fd987aee4bc2a22d6b }}/tee-time-practice:${{ github.sha }}
+        tags: ${{ secrets.ACR_LOGIN_SERVER }}/tee-time-reservation:${{ github.sha }}
         file: ./Dockerfile
 
   deploy:
@@ -48,4 +48,4 @@ jobs:
         app-name: 'tee-time-reservation'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_8a7445fad1864dd7b8e2e2fd2c9eb31f }}
-        images: 'almirs.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_dd3dc2535df540fd987aee4bc2a22d6b }}/tee-time-practice:${{ github.sha }}'
+        images: '${{ secrets.ACR_LOGIN_SERVER }}/tee-time-reservation:${{ github.sha }}'
