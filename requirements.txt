@@ -2,6 +2,7 @@ flask
 gunicorn
 python-dotenv
 seleniumbase==4.37.1
+PyAutoGUI
 selenium
 pytz
 Werkzeug
