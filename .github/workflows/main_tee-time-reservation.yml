@@ -6,11 +6,13 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +40,6 @@ jobs:
           push: true
           tags: ${{ secrets.ACR_LOGIN_SERVER }}/tee-time-reservation:latest
           file: ./Dockerfile
-          # Add build cache settings for faster builds
           cache-from: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/tee-time-reservation:buildcache
           cache-to: type=registry,ref=${{ secrets.ACR_LOGIN_SERVER }}/tee-time-reservation:buildcache,mode=max
 
@@ -48,9 +49,7 @@ jobs:
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write
-      contents: read
+    # Remove job-level permissions since they're now defined globally
 
     steps:
       - name: Login to Azure
