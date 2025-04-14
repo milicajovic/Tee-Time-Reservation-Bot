@@ -26,30 +26,20 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
-# Get the connection string for Azurite (or your Azure Storage account) from the .env file
-AZURE_CONNECTION_STRING = os.getenv("AZURITE_CONNECTION_STRING")
-print("AZURITE_CONNECTION_STRING =", os.getenv("AZURITE_CONNECTION_STRING"))
-
-# Table name for reservations
-TABLE_NAME = "reservations"
+# def get_table_client():
+#     service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
+#     return service_client.get_table_client(table_name="reservations")
 
 def get_table_client():
+    conn_str = os.getenv("AZURITE_CONNECTION_STRING")
+    if not conn_str:
+        print("AZURITE_CONNECTION_STRING is empty!")
+    else:
+        # Print only the first 30 characters for debugging purposes.
+        print("AZURITE_CONNECTION_STRING (partial):", conn_str[:30])
     service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
-    return service_client.get_table_client(table_name=TABLE_NAME)
+    return service_client.get_table_client(table_name="reservations")
 
-def init_table():
-    """
-    Create the reservations table if it does not exist.
-    """
-    service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
-    try:
-        service_client.create_table(table_name=TABLE_NAME)
-        logging.info("Table created successfully.")
-    except Exception as e:
-        # If table exists, an exception might be thrown. We log it and move on.
-        logging.info("Table already exists or could not be created: " + str(e))
-
-init_table()
 
 @app.route('/')
 def home():
@@ -116,7 +106,7 @@ def calculate_utc_activation_time2(user_date: str, user_time: str) -> str:
     now_et = datetime.now(et_tz)
     
     # Add 2 minutes to current time
-    activation_et = now_et + timedelta(minutes=2)
+    activation_et = now_et + timedelta(minutes=1)
     
     # Convert to UTC
     activation_utc = activation_et.astimezone(pytz.utc)
