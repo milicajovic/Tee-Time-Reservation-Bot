@@ -26,20 +26,9 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
-# def get_table_client():
-#     service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
-#     return service_client.get_table_client(table_name="reservations")
-
 def get_table_client():
-    conn_str = os.getenv("AZURITE_CONNECTION_STRING")
-    if not conn_str:
-        print("AZURITE_CONNECTION_STRING is empty!")
-    else:
-        # Print only the first 30 characters for debugging purposes.
-        print("AZURITE_CONNECTION_STRING (partial):", conn_str[:30])
-    service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURITE_CONNECTION_STRING"))
-    return service_client.get_table_client(table_name="reservations")
-
+    service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURE_STORAGE_CONNECTION_STRING"))
+    return service_client.get_table_client(table_name=os.getenv("AZURE_STORAGE_TABLE_NAME"))
 
 @app.route('/')
 def home():
