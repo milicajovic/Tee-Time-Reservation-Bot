@@ -155,8 +155,10 @@ EXPOSE 8080
 
 # Set the Python path so your application is discoverable
 ENV PYTHONPATH=/app
+ENV DISPLAY=:99
 
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=production
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "2", "app:app"]
+# CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+# CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & gunicorn --bind 0.0.0.0:8080 app:app"]
+# CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & gunicorn --bind 0.0.0.0:8080 --timeout 180 app:app"]
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & gunicorn --bind 0.0.0.0:8080 --timeout 180 --workers 3 app:app"]
