@@ -153,7 +153,7 @@ RUN seleniumbase get chromedriver --path
 # Expose the port your Flask app runs on
 EXPOSE 8080
 
-# Set the Python path so your application is discoverable
+# Set the Python path so your applicatio is discoverable
 ENV PYTHONPATH=/app
 ENV DISPLAY=:99
 
