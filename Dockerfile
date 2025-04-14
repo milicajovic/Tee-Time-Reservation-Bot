@@ -158,7 +158,8 @@ ENV PYTHONPATH=/app
 ENV DISPLAY=:99
 
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+# CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "500", "app:app"]
 # CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & gunicorn --bind 0.0.0.0:8080 app:app"]
 # CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & gunicorn --bind 0.0.0.0:8080 --timeout 180 app:app"]
 # CMD ["sh", "-c", "Xvfb :99 -screen 0 1920x1080x24 & gunicorn --bind 0.0.0.0:8080 --timeout 500 app:app"]
