@@ -190,7 +190,9 @@ body {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    padding: 0 110px;
+    padding: 0 15px;
+    position: relative;
+    z-index: 2;
 }
 
 .calendar-body {
@@ -271,9 +273,11 @@ body {
 
 .time-slots-container {
     width: 100%;
-    max-width: 550px;
-    flex-shrink: 0;
-    margin-bottom: 60px;
+    max-width: 580px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 20px;
 }
 
 .timezone-selector,
@@ -283,9 +287,12 @@ body {
 
 .time-slots {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 17px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    width: 100%;
+    overflow-x: auto;
+    padding: 10px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .time-slot {
@@ -428,64 +435,146 @@ body {
     }
     
     .select-date-and-time-title {
-        font-size: 22px;
+        font-size: 20px;
     }
     
     .calendar-header {
-        padding: 12px 20px;
+        padding: 0 10px;
     }
     
     .calendar-body {
-        padding: 10px;
+        padding: 0 10px;
     }
     
     .time-slots-container {
-        margin-bottom: 30px;
+        margin-top: 30px;
+    }
+    
+    .time-slots {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
     }
     
     .book-button {
-        margin: 10px auto 25px;
+        width: 90%;
+        max-width: 300px;
     }
     
     .select-date-and-time-container {
-        padding-top: 15px;
+        padding: 10px 20px;
     }
     
     .footer-content {
-        flex-direction: column;
-        gap: 10px;
+        padding: 10px 20px;
     }
     
     #timezoneDisplay {
-        font-size: 13px;
+        font-size: 14px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 15px;
+    }
+    
+    .modal-body {
+        margin-top: 30px;
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+    
+    .modal-body h2 {
+        font-size: 20px;
+    }
+    
+    .modal-body p {
+        font-size: 14px;
+    }
+    
+    .modal-footer {
+        padding: 5px 20px 25px 20px;
+    }
+    
+    .confirm-btn {
+        font-size: 16px;
+        padding: 8px 30px;
     }
 }
 
 @media (max-width: 576px) {
     .header-title {
-        font-size: 32px;
+        font-size: 28px;
     }
     
     .header-ccc-logo {
-        height: 70px;
+        height: 60px;
     }
     
     .calendar-weekdays,
     .calendar-days {
-        gap: 5px;
+        gap: 8px;
     }
     
     .calendar-day {
-        height: 32px;
-        width: 32px;
+        height: 30px;
+        width: 30px;
         font-size: 14px;
     }
     
     .book-button {
-        max-width: 180px;
+        width: 95%;
+        font-size: 16px;
+        padding: 12px 24px;
+    }
+    
+    .calendar-nav span {
+        padding: 0 10px;
+    }
+    
+    .time-slots {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+    
+    .time-slot {
+        padding: 8px 12px;
         font-size: 14px;
-        padding: 8px 16px;
-        font-family: 'Sator Regular';
+    }
+    
+    .modal-content {
+        width: 100%;
+        margin: 10px;
+    }
+    
+    .modal-body {
+        margin-top: 25px;
+        margin-left: 15px;
+        margin-right: 15px;
+    }
+    
+    .modal-body h2 {
+        font-size: 18px;
+    }
+    
+    .modal-body p {
+        font-size: 13px;
+    }
+    
+    .modal-footer {
+        padding: 5px 15px 20px 15px;
+    }
+    
+    .confirm-btn {
+        font-size: 15px;
+        padding: 6px 25px;
+    }
+    
+    .cancel-btn {
+        top: 12px;
+        right: 12px;
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
     }
 }
 
@@ -512,11 +601,12 @@ body {
 .modal-content {
     background-color: #f7f7f7;
     font-weight: 200;
-    width: 100%;
+    width: 90%;
     max-width: 500px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
     overflow: hidden;
-    position: relative;    
+    position: relative;
+    margin: 20px;
 }
 
 .modal-body {
@@ -525,13 +615,14 @@ body {
     color: #333;
     margin-top: 40px;
     margin-left: 30px;
+    margin-right: 30px;
 }
 
 .modal-body h2 {
     text-align: left;
     font-size: 22px;
     color: #333;
-    margin-bottom: 10px;    
+    margin-bottom: 10px;
     font-family: 'Minion Pro Caption', sans-serif;
 }
 
@@ -539,7 +630,7 @@ body {
     text-align: left;
     font-size: 15.5px;
     color: #333;
-    margin-bottom: 20px;        
+    margin-bottom: 20px;
     font-family: 'Futura Light', sans-serif;
 }
 
@@ -585,12 +676,12 @@ body {
 }
 
 .confirm-btn {
-    background-color: #091c3e; 
-    color: #f7f7f7;           
-    padding: 5px 40px;       
-    font-size: 17px;          
+    background-color: #091c3e;
+    color: #f7f7f7;
+    padding: 5px 40px;
+    font-size: 17px;
     font-family: 'Futura Light', sans-serif;
-    cursor: pointer;          
+    cursor: pointer;
     border: 1px solid #091c3e;
     transition: background-color 0.3s ease;
     width: 100%;
