@@ -10,6 +10,40 @@ document.addEventListener('DOMContentLoaded', function() {
     currentMonth = currentDate.getMonth();
     currentYear = currentDate.getFullYear();
     
+    // View navigation elements
+    const calendarContainer = document.querySelector('.calendar-container');
+    const emptyContainer = document.querySelector('.empty-container');
+    const prevViewBtn = document.getElementById('prevView');
+    const nextViewBtn = document.getElementById('nextView');
+    
+    // Handle view navigation
+    nextViewBtn.addEventListener('click', function() {
+        calendarContainer.style.display = 'none';
+        emptyContainer.style.display = 'block';
+        prevViewBtn.style.display = 'flex';
+        nextViewBtn.style.display = 'none';
+        // Change the title text
+        document.querySelector('.select-date-and-time-title').textContent = 'Reservations';
+        // Hide the Book Now button
+        document.querySelector('.book-button').style.display = 'none';
+        // Fetch and display reservations
+        fetchAndDisplayReservations();
+    });
+    
+    prevViewBtn.addEventListener('click', function() {
+        calendarContainer.style.display = 'flex';
+        emptyContainer.style.display = 'none';
+        prevViewBtn.style.display = 'none';
+        nextViewBtn.style.display = 'flex';
+        // Change the title text back
+        document.querySelector('.select-date-and-time-title').textContent = 'Select Date and Time';
+        // Show the Book Now button
+        document.querySelector('.book-button').style.display = 'block';
+    });
+    
+    // Initially hide the back button
+    prevViewBtn.style.display = 'none';
+    
     // Function to update the calendar display
     function updateCalendar() {
         const calendarDays = document.getElementById('calendarDays');
@@ -97,6 +131,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update timezone every minute
     setInterval(displayAtlantaTimezone, 60000);
+
+    // Handle delete reservation buttons
+    document.querySelectorAll('.delete-reservation-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const reservationRow = this.closest('.reservation-row');
+            const reservationDate = reservationRow.querySelector('.reservation-date').textContent;
+            
+            if (confirm(`Are you sure you want to delete the reservation for ${reservationDate}?`)) {
+                reservationRow.remove();
+            }
+        });
+    });
 });
 
 // Function to generate all time slots
@@ -238,10 +284,9 @@ function setupTimeSlots() {
     
     confirmBtn.addEventListener('click', async () => {
         if (selectedDate && selectedTime) {
-            // Disable the confirm button to prevent multiple clicks
+            // Add loading state to the button
+            confirmBtn.classList.add('loading');
             confirmBtn.disabled = true;
-            confirmBtn.style.opacity = '0.5';
-            confirmBtn.style.cursor = 'not-allowed';
             
             try {
                 const response = await fetch('/submit', {
@@ -257,29 +302,25 @@ function setupTimeSlots() {
 
                 const result = await response.json();
                 
+                // Remove loading state
+                confirmBtn.classList.remove('loading');
+                confirmBtn.disabled = false;
+                
                 if (result.status === 'success') {
                     alert('Reservation submitted successfully!');
                     modal.style.display = 'none';
-                    // Re-enable the button after successful submission
-                    confirmBtn.disabled = false;
-                    confirmBtn.style.opacity = '1';
-                    confirmBtn.style.cursor = 'pointer';
                 } else {
                     alert('Error submitting reservation: ' + result.message);
-                    modal.style.display = 'none';  // Close the modal on error
-                    // Re-enable the button if there was an error
-                    confirmBtn.disabled = false;
-                    confirmBtn.style.opacity = '1';
-                    confirmBtn.style.cursor = 'pointer';
+                    modal.style.display = 'none';
                 }
             } catch (error) {
-                alert('Error submitting reservation. Please try again.');
-                modal.style.display = 'none';  // Close the modal on error
-                console.error('Error:', error);
-                // Re-enable the button if there was an error
+                // Remove loading state on error
+                confirmBtn.classList.remove('loading');
                 confirmBtn.disabled = false;
-                confirmBtn.style.opacity = '1';
-                confirmBtn.style.cursor = 'pointer';
+                
+                alert('Error submitting reservation. Please try again.');
+                modal.style.display = 'none';
+                console.error('Error:', error);
             }
         } else {
             alert('Please select both a date and time before confirming.');
@@ -317,4 +358,113 @@ function displayAtlantaTimezone() {
   
     // Show it in the page
     document.getElementById('timezoneDisplay').textContent = displayString;
+}
+
+// Function to format date from YYYY-MM-DD to Month DDth, YYYY
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    const day = date.getDate();
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+    
+    // Add the appropriate suffix to the day
+    let suffix = 'th';
+    if (day % 10 === 1 && day !== 11) suffix = 'st';
+    else if (day % 10 === 2 && day !== 12) suffix = 'nd';
+    else if (day % 10 === 3 && day !== 13) suffix = 'rd';
+    
+    return `${month} ${day}${suffix}, ${year}`;
+}
+
+// Function to format time from HH:MM AM/PM to HH:MM am/pm
+function formatTime(timeStr) {
+    return timeStr.toLowerCase();
+}
+
+// Function to create a reservation row
+function createReservationRow(reservation) {
+    const row = document.createElement('div');
+    row.className = 'reservation-row';
+    
+    const formattedDate = formatDate(reservation.date);
+    const formattedTime = formatTime(reservation.time);
+    
+    row.innerHTML = `
+        <div class="reservation-date">${formattedDate} at ${formattedTime}</div>
+        <div class="reservation-status ${reservation.status}">${reservation.status}</div>
+        <div class="reservation-action">
+            <button class="delete-reservation-btn" ${reservation.status !== 'pending' ? 'disabled' : ''}>
+                Cancel
+            </button>
+        </div>
+    `;
+    
+    // Add click event listener for the cancel button
+    const cancelBtn = row.querySelector('.delete-reservation-btn');
+    if (reservation.status === 'pending') {
+        cancelBtn.addEventListener('click', function() {
+            if (confirm(`Are you sure you want to cancel the reservation for ${formattedDate} at ${formattedTime}?`)) {
+                cancelReservation(reservation.date, reservation.time, row);
+            }
+        });
+    }
+    
+    return row;
+}
+
+// Function to fetch and display reservations
+async function fetchAndDisplayReservations() {
+    try {
+        const response = await fetch('/get-reservations');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const reservationsContainer = document.querySelector('.reservations-container');
+            const header = reservationsContainer.querySelector('.reservation-header');
+            reservationsContainer.innerHTML = '';
+            reservationsContainer.appendChild(header);
+            
+            // Sort reservations by date and time (newest first)
+            const sortedReservations = data.reservations.sort((a, b) => {
+                const dateA = new Date(`${a.date} ${a.time}`);
+                const dateB = new Date(`${b.date} ${b.time}`);
+                return dateB - dateA;
+            });
+            
+            // Add all reservations - let CSS handle the scrolling
+            sortedReservations.forEach(reservation => {
+                const row = createReservationRow(reservation);
+                reservationsContainer.appendChild(row);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching reservations:', error);
+    }
+}
+
+// Function to cancel a reservation
+async function cancelReservation(date, time, rowElement) {
+    try {
+        const response = await fetch('/cancel-reservation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ date, time })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Remove the row from the UI
+            rowElement.remove();
+        } else {
+            alert('Failed to cancel reservation: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error cancelling reservation:', error);
+        alert('An error occurred while cancelling the reservation');
+    }
 }

@@ -29,6 +29,14 @@
     <div class="container">
         <div class="select-date-and-time-container">
             <h1 class="select-date-and-time-title">Select Date and Time</h1>
+            <div class="view-navigation">
+                <button class="view-nav-btn" id="prevView" style="display: none;">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="view-nav-btn" id="nextView" style="display: flex;">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         </div>
         <hr class="section-divider">
         <div class="calendar-container">
@@ -36,8 +44,8 @@
                 <div class="calendar-header">
                     <h3 id="currentMonth">May 2024</h3>
                     <div class="calendar-nav">
-                        <span id="prevMonth">&lt;</span>
-                        <span id="nextMonth">&gt;</span>
+                        <span id="prevMonth"><i class="fas fa-chevron-left"></i></span>
+                        <span id="nextMonth"><i class="fas fa-chevron-right"></i></span>
                     </div>
                 </div>
                 <div class="calendar-body">
@@ -68,6 +76,16 @@
                         Next <i class="fas fa-chevron-right"></i>
                     </button>
                 </div>
+            </div>
+        </div>
+        <div class="empty-container" style="display: none;">
+            <div class="reservations-container">
+                <div class="reservation-header">
+                    <div class="reservation-date">Date & Time</div>
+                    <div class="reservation-status">Status</div>
+                    <div class="reservation-action">Actions</div>
+                </div>
+                <!-- Reservation rows will be dynamically generated here -->
             </div>
         </div>
     </div>

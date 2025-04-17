@@ -182,6 +182,65 @@ def run_reservation():
         logging.error(f"Error in run-reservation route: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-    
+@app.route('/get-reservations', methods=['GET'])
+def get_reservations():
+    try:
+        table_client = get_table_client()
+        # Query all reservations, ordered by date and time
+        entities = list(table_client.query_entities(
+            query_filter="PartitionKey eq 'reservations'",
+            select=["date", "time", "status"]
+        ))
+        
+        # Format the entities for the frontend
+        formatted_reservations = []
+        for entity in entities:
+            formatted_reservations.append({
+                'date': entity['date'],
+                'time': entity['time'],
+                'status': entity['status']
+            })
+        
+        return jsonify({
+            'status': 'success',
+            'reservations': formatted_reservations
+        })
+    except Exception as e:
+        logging.error(f"Error fetching reservations: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/cancel-reservation', methods=['POST'])
+def cancel_reservation():
+    try:
+        data = request.json
+        date = data.get('date')
+        time = data.get('time')
+        
+        if not date or not time:
+            return jsonify({
+                'status': 'error',
+                'message': 'Date and time are required'
+            }), 400
+            
+        table_client = get_table_client()
+        row_key = f"{date}_{time}"
+        
+        # Delete the entity instead of updating its status
+        table_client.delete_entity(partition_key="reservations", row_key=row_key)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Reservation deleted successfully'
+        })
+    except Exception as e:
+        logging.error(f"Error cancelling reservation: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 if __name__ == '__main__':
     app.run(port=8080, host='0.0.0.0', debug=True)
