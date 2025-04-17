@@ -9,9 +9,15 @@ from email.mime.multipart import MIMEMultipart
 import sqlite3
 import sys
 from datetime import datetime
+import uuid
+import logging
+from .blob_storage import BlobStorageService
 
 # Load environment variables
 load_dotenv()
+
+# Initialize blob storage service
+blob_service = BlobStorageService()
 
 def take_error_screenshot(sb, method_name):
     """Helper function to take and save error screenshots with timestamp"""
@@ -27,9 +33,20 @@ def take_error_screenshot(sb, method_name):
         
         # Take and save screenshot
         sb.save_screenshot(filepath)
-        print(f"Error screenshot saved: {filepath}")
+        logging.info(f"Error screenshot saved locally: {filepath}")
+
+        # Upload to Blob Storage
+        url = blob_service.upload_screenshot(filepath, method_name)
+        if url:
+            logging.info(f"Screenshot uploaded to blob storage: {url}")
+            # Remove local file after successful upload
+            os.remove(filepath)
+            logging.info(f"Local file removed: {filepath}")
+        else:
+            logging.error("Failed to upload screenshot to blob storage")
+
     except Exception as e:
-        print(f"Failed to save error screenshot: {str(e)}")
+        logging.error(f"Failed to save or upload error screenshot: {str(e)}")
 
 # Use credentials from .env
 LOGIN_CREDENTIALS = {
@@ -439,6 +456,14 @@ def select_tee_time(sb, desired_time, max_attempts=3):
             sb.save_screenshot(filepath)
             print(f"Screenshot saved: {filepath}")
             
+            # Upload to blob storage and set as success screenshot
+            success_url = blob_service.upload_screenshot(filepath, "successful_reservation")
+            if success_url:
+                blob_service.set_success_screenshot(success_url)
+                # Remove local file after successful upload
+                # os.remove(filepath) ZA SADA POSLE OTKOMENTARISI
+                print(f"Local file removed: {filepath}")
+            
             # Click the time button using JavaScript
             sb.execute_script("arguments[0].click();", time_button)
             print(f"Successfully selected time: {time_text}")
@@ -745,12 +770,29 @@ def handle_logout(sb, max_attempts=3):
 def send_email(reservation_date, reservation_time, success=True):
     sender_email = os.getenv('SENDER_EMAIL')
     app_password = os.getenv('APP_PASSWORD')     
-    receiver_email =os.getenv('RECEIVER_EMAIL')
+    receiver_email = os.getenv('RECEIVER_EMAIL')
  
     msg = MIMEMultipart()
     msg['Subject'] = "⛳ Reservation Status Update"
     msg['From'] = sender_email
     msg['To'] = receiver_email
+    
+    # Build screenshot links HTML based on success status
+    if success:
+        success_url = blob_service.get_success_screenshot_url()
+        if success_url:
+            links_html = f"<h4>Reservation Confirmation:</h4><p><a href='{success_url}'>View Selected Time</a></p>"
+        else:
+            links_html = "<p>No confirmation screenshot available.</p>"
+    else:
+        error_urls = blob_service.get_screenshot_urls()
+        if error_urls:
+            links_html = "<h4>Error Screenshots:</h4>"
+            for url in error_urls:
+                filename = os.path.basename(url)
+                links_html += f'<p><a href="{url}">{filename}</a></p>'
+        else:
+            links_html = "<p>No error screenshots were captured in this session.</p>"
     
     if success:
         html = f"""<html>
@@ -759,14 +801,16 @@ def send_email(reservation_date, reservation_time, success=True):
             <p>Your tee time has been booked.</p>
             <p>Date: {reservation_date}<br>
                Time: {reservation_time}</p>
+            {links_html}
             <p>Thank you for using our service!</p>
         </body>
         </html>"""
     else:
-        html = """<html>
+        html = f"""<html>
         <body>
             <h3 style="color:#8b0000;">Reservation Failed</h3>
             <p>We were unable to book your tee time.</p>
+            {links_html}
             <p>Please try again later or contact support if the issue persists.</p>
             <p>We apologize for any inconvenience.</p>
         </body>
@@ -776,15 +820,17 @@ def send_email(reservation_date, reservation_time, success=True):
     
     try:
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()  # Secure the connection
+            server.starttls()
             server.login(sender_email, app_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
-        print("Email sent successfully!")
+        logging.info("Email sent successfully!")
     except Exception as e:
-        print(f"Error sending email: {e}")
+        logging.error(f"Error sending email: {e}")
 
 def open_website(reservation_date, reservation_time):
     try:
+        # Start a new session for this run
+        blob_service.start_new_session()
         url = os.getenv('CLUB_URL')
         print(f"Attempting to navigate to: {url}")
                 

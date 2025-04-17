@@ -11,3 +11,4 @@ itsdangerous
 Jinja2
 MarkupSafe
 azure-data-tables
+azure-storage-blob
