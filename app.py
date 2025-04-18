@@ -62,6 +62,8 @@ def submit():
             "time": time,
             "utc_activation_time": utc_activation_time,
             "status": "pending",  # default status
+            "locked_until": None,            # Initially no lock
+            "retry_count": 0                 # Default retry count is 0
         }
 
         # Insert the entity into the table
