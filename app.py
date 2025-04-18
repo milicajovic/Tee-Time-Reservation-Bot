@@ -141,41 +141,76 @@ def calculate_utc_activation_time2(user_date: str, user_time: str) -> str:
 @app.route('/run-reservation', methods=['GET','POST'])
 def run_reservation():
     try:
+        # Constants
+        MAX_RETRIES = 3
+        LOCK_DURATION_MINUTES = 5
+        
         # Get the current UTC time in ISO 8601 format (including timezone info)
         now_utc = datetime.now(pytz.utc).isoformat()
         table_client = get_table_client()
 
-        # Query for pending reservations where utc_activation_time is less than or equal to now
-        filter_query = f"status eq 'pending' and utc_activation_time le '{now_utc}'"
+        # PHASE 1: LOCKING
+        # Query for pending reservations where:
+        # 1. status is 'pending'
+        # 2. utc_activation_time is less than or equal to now
+        # 3. either locked_until is None or it's in the past
+        filter_query = (
+            f"status eq 'pending' and "
+            f"utc_activation_time le '{now_utc}' and "
+            f"(locked_until eq null or locked_until lt '{now_utc}')"
+        )
         entities = list(table_client.query_entities(filter_query))
-        logging.info(f"Found {len(entities)} reservations to process at {now_utc}.")
+        logging.info(f"Found {len(entities)} reservations to process at {now_utc}")
 
+        # Lock all eligible items immediately
+        lock_until = (datetime.now(pytz.utc) + timedelta(minutes=LOCK_DURATION_MINUTES)).isoformat()
+        for entity in entities:
+            entity["status"] = "locked"
+            entity["locked_until"] = lock_until
+            entity["retry_count"] = entity.get("retry_count", 0) + 1
+            table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
+            logging.info(f"Locked reservation {entity['RowKey']} until {lock_until}")
+
+        # PHASE 2: PROCESSING
         results = []
         for entity in entities:
             row_key = entity["RowKey"]
             reservation_date = entity.get("date")
             reservation_time = entity.get("time")
+            retry_count = entity.get("retry_count", 0)
+            
             try:
-                # 1) Lock the entity so future runs skip it
-                entity["status"] = "in-progress" 
-                table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
-
-                # 2) Perform the automation
+                # Perform the automation
                 logging.info(f"Processing reservation with RowKey {row_key} => {reservation_date} {reservation_time}")
-                # Call the open_website function from automation.login
                 open_website(reservation_date, reservation_time)
                 
-                # 3) Success => Update entity status to 'executed'
+                # Success => Update entity status to 'executed'
                 entity["status"] = "executed"
-                table_client.update_entity(entity=entity,  mode=UpdateMode.MERGE)
+                entity["locked_until"] = None  # Clear the lock
+                table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
                 results.append({"RowKey": row_key, "status": "executed"})
                 
             except Exception as e:
-                # 4) On failure => Update entity status to 'failed'
-                entity["status"] = "failed"
-                table_client.update_entity(entity=entity,  mode=UpdateMode.MERGE)
+                # On failure => Handle retry logic
+                if retry_count < MAX_RETRIES:
+                    # Reset to pending so it can be retried after lock expires
+                    entity["status"] = "pending"
+                    logging.info(f"Resetting reservation {row_key} to pending for retry {retry_count}/{MAX_RETRIES}")
+                else:
+                    # Max retries exceeded, mark as failed
+                    entity["status"] = "failed"
+                    logging.error(f"Max retries exceeded for reservation {row_key}")
+                
+                # Clear the lock in both cases
+                entity["locked_until"] = None
+                table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
                 logging.error(f"Error processing reservation with RowKey {row_key}: {str(e)}")
-                results.append({"RowKey": row_key, "status": "failed", "error": str(e)})
+                results.append({
+                    "RowKey": row_key, 
+                    "status": entity["status"],
+                    "error": str(e),
+                    "retry_count": retry_count
+                })
 
         return jsonify({"status": "success", "results": results}), 200
     except Exception as e:
