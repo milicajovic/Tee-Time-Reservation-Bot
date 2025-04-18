@@ -159,7 +159,7 @@ def run_reservation():
         filter_query = (
             f"status eq 'pending' and "
             f"utc_activation_time le '{now_utc}' and "
-            f"(locked_until eq null or locked_until lt '{now_utc}')"
+            f"(not has locked_until or locked_until lt '{now_utc}')"
         )
         entities = list(table_client.query_entities(filter_query))
         logging.info(f"Found {len(entities)} reservations to process at {now_utc}")
