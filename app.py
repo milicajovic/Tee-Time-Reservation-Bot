@@ -62,7 +62,7 @@ def submit():
             "time": time,
             "utc_activation_time": utc_activation_time,
             "status": "pending",  # default status
-            "locked_until": None,            # Initially no lock
+            "locked_until": datetime(1970, 1, 1, tzinfo=pytz.utc),
             "retry_count": 0                 # Default retry count is 0
         }
 
@@ -157,9 +157,9 @@ def run_reservation():
         # 2. utc_activation_time is less than or equal to now
         # 3. either locked_until is None or it's in the past
         filter_query = (
-            f"status eq 'pending' and "
-            f"utc_activation_time le '{now_utc}' and "
-            f"(not has locked_until or locked_until lt '{now_utc}')"
+            "status eq 'pending' and "
+            f"utc_activation_time le'{now_utc}' and "
+            f"(locked_until lt datetime'{now_utc}')"
         )
         entities = list(table_client.query_entities(filter_query))
         logging.info(f"Found {len(entities)} reservations to process at {now_utc}")
