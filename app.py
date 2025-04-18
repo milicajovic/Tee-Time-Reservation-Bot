@@ -142,82 +142,71 @@ def calculate_utc_activation_time2(user_date: str, user_time: str) -> str:
 # New route to process pending reservations, similar to your scheduler.py logic.
 @app.route('/run-reservation', methods=['GET','POST'])
 def run_reservation():
+    # Constants
+    MAX_RETRIES = 3
+    LOCK_DURATION_MINUTES = 5
+
+    table_client = get_table_client()
+    now_utc = datetime.now(pytz.utc).isoformat()
+
+    # 1) Find ONE pending reservation whose activation time has arrived
+    #    and whose lock has already expired.
+    filter_query = (
+        "status eq 'pending' and "
+        f"utc_activation_time le '{now_utc}' and "
+        f"locked_until lt datetime'{now_utc}'"
+    )
+    entities = table_client.query_entities(filter_query)
+    entity = next(entities, None)
+
+    if not entity:
+        logging.info(f"No pending reservations to process at {now_utc}")
+        return jsonify({"status": "success", "results": []}), 200
+
+    row_key = entity["RowKey"]
+    reservation_date = entity["date"]
+    reservation_time = entity["time"]
+    retry_count = entity.get("retry_count", 0) + 1
+
+    # 2) Lock it right away
+    lock_until = (datetime.now(pytz.utc) + timedelta(minutes=LOCK_DURATION_MINUTES)).isoformat()
+    entity["status"]      = "locked"
+    entity["locked_until"] = lock_until
+    entity["retry_count"] = retry_count
+    table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
+    logging.info(f"Locked reservation {row_key} until {lock_until}")
+
+    # 3) PROCESS it
+    result = {"RowKey": row_key}
     try:
-        # Constants
-        MAX_RETRIES = 3
-        LOCK_DURATION_MINUTES = 5
-        
-        # Get the current UTC time in ISO 8601 format (including timezone info)
-        now_utc = datetime.now(pytz.utc).isoformat()
-        table_client = get_table_client()
+        logging.info(f"Processing reservation {row_key}: {reservation_date} {reservation_time}")
+        open_website(reservation_date, reservation_time)
+        # If we get here, it succeeded:
+        entity["status"]       = "executed"
+        entity["locked_until"] = None
+        table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
+        logging.info(f"Reservation {row_key} executed successfully")
+        result["status"] = "executed"
 
-        # PHASE 1: LOCKING
-        # Query for pending reservations where:
-        # 1. status is 'pending'
-        # 2. utc_activation_time is less than or equal to now
-        # 3. either locked_until is None or it's in the past
-        filter_query = (
-            "status eq 'pending' and "
-            f"utc_activation_time le'{now_utc}' and "
-            f"(locked_until lt datetime'{now_utc}')"
-        )
-        entities = list(table_client.query_entities(filter_query))
-        logging.info(f"Found {len(entities)} reservations to process at {now_utc}")
-
-        # Lock all eligible items immediately
-        lock_until = (datetime.now(pytz.utc) + timedelta(minutes=LOCK_DURATION_MINUTES)).isoformat()
-        for entity in entities:
-            entity["status"] = "locked"
-            entity["locked_until"] = lock_until
-            entity["retry_count"] = entity.get("retry_count", 0) + 1
-            table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
-            logging.info(f"Locked reservation {entity['RowKey']} until {lock_until}")
-
-        # PHASE 2: PROCESSING
-        results = []
-        for entity in entities:
-            row_key = entity["RowKey"]
-            reservation_date = entity.get("date")
-            reservation_time = entity.get("time")
-            retry_count = entity.get("retry_count", 0)
-            
-            try:
-                # Perform the automation
-                logging.info(f"Processing reservation with RowKey {row_key} => {reservation_date} {reservation_time}")
-                open_website(reservation_date, reservation_time)
-                
-                # Success => Update entity status to 'executed'
-                entity["status"] = "executed"
-                entity["locked_until"] = None  # Clear the lock
-                table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
-                results.append({"RowKey": row_key, "status": "executed"})
-                
-            except Exception as e:
-                # On failure => Handle retry logic
-                if retry_count < MAX_RETRIES:
-                    # Reset to pending so it can be retried after lock expires
-                    entity["status"] = "pending"
-                    logging.info(f"Resetting reservation {row_key} to pending for retry {retry_count}/{MAX_RETRIES}")
-                else:
-                    # Max retries exceeded, mark as failed
-                    entity["status"] = "failed"
-                    logging.error(f"Max retries exceeded for reservation {row_key}")
-                
-                # Clear the lock in both cases
-                entity["locked_until"] = None
-                table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
-                logging.error(f"Error processing reservation with RowKey {row_key}: {str(e)}")
-                results.append({
-                    "RowKey": row_key, 
-                    "status": entity["status"],
-                    "error": str(e),
-                    "retry_count": retry_count
-                })
-
-        return jsonify({"status": "success", "results": results}), 200
     except Exception as e:
-        logging.error(f"Error in run-reservation route: {str(e)}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        # On failure: if we still have retries left, keep status = pending
+        if retry_count < MAX_RETRIES:
+            entity["status"] = "pending"
+            result["status"] = "pending"
+            logging.warning(f"Reservation {row_key} failed, retry {retry_count}/{MAX_RETRIES}: {e}")
+        else:
+            entity["status"] = "failed"
+            result["status"] = "failed"
+            logging.error(f"Reservation {row_key} failed permanently after {retry_count} tries: {e}")
+
+        # Note: we DO NOT clear locked_until here so that no one picks it
+        # up again until the original lock expires.
+        table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
+        result["error"] = str(e)
+        result["retry_count"] = retry_count
+
+    return jsonify({"status": "success", "results": [result]}), 200
+
     
 @app.route('/get-reservations', methods=['GET'])
 def get_reservations():
