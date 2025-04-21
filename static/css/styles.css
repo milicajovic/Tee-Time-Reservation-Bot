@@ -927,15 +927,14 @@ body {
     margin: 0 auto;
     height: 310px;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: transparent #f7f7f7;
+    scrollbar-width: none;
     position: relative;
-    padding-right: 10px;
 }
 
 /* Custom scrollbar for Webkit browsers (Chrome, Safari, etc.) */
 .reservations-container::-webkit-scrollbar {
-    width: 6px;
+    width: 0;
+    height: 0;
 }
 
 .reservations-container::-webkit-scrollbar-track {
@@ -944,7 +943,8 @@ body {
 
 .reservations-container::-webkit-scrollbar-thumb {
     background-color: transparent;
-    border-radius: 3px;
+    width: 0;
+    height: 0;
 }
 
 .reservations-container:hover::-webkit-scrollbar-thumb {
