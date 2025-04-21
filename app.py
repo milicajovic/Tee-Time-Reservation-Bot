@@ -48,8 +48,9 @@ def submit():
         logging.info(f"Received reservation request - Date: {date}, Time: {time}")
 
         # Calculate utc_activation_time based on the date and time
-        utc_activation_time = calculate_utc_activation_time2(date, time)
-
+        # utc_activation_time = calculate_utc_activation_time2(date, time)
+        raw_iso = calculate_utc_activation_time2(date, time)
+        utc_activation_time = datetime.fromisoformat(raw_iso)   # handles the "+00:00" offset too
         # Prepare a unique RowKey that starts with the activation time (ISO 8601) for proper sorting,
         # appended with a UUID for uniqueness in case of duplicate activation times.
         row_key = f"{date}_{time}"
@@ -147,13 +148,13 @@ def run_reservation():
     LOCK_DURATION_MINUTES = 5
 
     table_client = get_table_client()
-    now_utc = datetime.now(pytz.utc).isoformat()
+    now_utc = datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # 1) Find ONE pending reservation whose activation time has arrived
     #    and whose lock has already expired.
     filter_query = (
         "status eq 'pending' and "
-        f"utc_activation_time le '{now_utc}' and "
+        f"utc_activation_time le datetime'{now_utc}' and "
         f"locked_until lt datetime'{now_utc}'"
     )
     entities = table_client.query_entities(filter_query)
@@ -169,7 +170,7 @@ def run_reservation():
     retry_count = entity.get("retry_count", 0) + 1
 
     # 2) Lock it right away
-    lock_until = (datetime.now(pytz.utc) + timedelta(minutes=LOCK_DURATION_MINUTES)).isoformat()
+    lock_until = datetime.now(pytz.utc) + timedelta(minutes=LOCK_DURATION_MINUTES)
     entity["status"]      = "locked"
     entity["locked_until"] = lock_until
     entity["retry_count"] = retry_count
