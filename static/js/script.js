@@ -197,13 +197,67 @@ function setupTimeSlots() {
         panels[currentPanel].forEach(time => {
             const slot = document.createElement('div');
             slot.className = 'time-slot';
-            slot.innerHTML = `<div class="time-text">${time}</div>`;
+            const options = [
+                { value: 'exact', text: 'Exact' },
+                { value: '12min', text: '±12 min' },
+                { value: '24min', text: '±24 min' },
+                { value: '36min', text: '±36 min' },
+                { value: '1hr', text: '±1 hr' },
+                { value: '2hr', text: '±2 hr' },
+                { value: '3hr', text: '±3 hr' },
+                { value: '4hr', text: '±4 hr' },
+                { value: '5hr', text: '±5 hr' }
+            ];
+
+            slot.innerHTML = `
+                <div class="time-text">${time}</div>
+                <div class="time-slot-dropdown">
+                    ${options.map(opt => `
+                        <div class="time-slot-dropdown-option" data-value="${opt.value}">${opt.text}</div>
+                    `).join('')}
+                </div>
+            `;
             
+            let activeDropdown = null;
+            let activeSlot = null;
+
+            // Function to update dropdown position
+            function updateDropdownPosition() {
+                if (activeSlot && activeDropdown) {
+                    const rect = activeSlot.getBoundingClientRect();
+                    activeDropdown.style.left = `${rect.left}px`;
+                    activeDropdown.style.top = `${rect.bottom + 1}px`;
+                    // Match dropdown width to time slot width
+                    activeDropdown.style.width = `${rect.width}px`;
+                    activeDropdown.style.maxWidth = `${rect.width}px`;
+                }
+            }
+
             // Add click event listener for the time slot
-            slot.addEventListener('click', () => {
+            slot.addEventListener('click', (e) => {
+                // Don't toggle if clicking the dropdown options
+                if (e.target.classList.contains('time-slot-dropdown-option')) {
+                    return;
+                }
+                
+                const dropdown = slot.querySelector('.time-slot-dropdown');
+                
+                // If clicking the same active slot, close the dropdown and return
+                if (slot.classList.contains('active') && dropdown.style.display === 'block') {
+                    dropdown.style.display = 'none';
+                    activeDropdown = null;
+                    activeSlot = null;
+                    return;
+                }
+                
                 // Remove active class from all slots
                 document.querySelectorAll('.time-slot').forEach(el => {
                     el.classList.remove('active');
+                    // Hide all other dropdowns
+                    const otherDropdown = el.querySelector('.time-slot-dropdown');
+                    if (otherDropdown) {
+                        otherDropdown.style.display = 'none';
+                    }
                 });
                 
                 // Add active class to clicked slot
@@ -211,6 +265,62 @@ function setupTimeSlots() {
                 
                 // Store selected time
                 selectedTime = time;
+                
+                // Position and show the dropdown
+                activeDropdown = dropdown;
+                activeSlot = slot;
+                updateDropdownPosition();
+                dropdown.style.display = 'block';
+            });
+
+            // Add scroll and resize listeners
+            window.addEventListener('scroll', updateDropdownPosition, true);
+            window.addEventListener('resize', updateDropdownPosition);
+
+            // Handle dropdown option clicks
+            const dropdownOptions = slot.querySelectorAll('.time-slot-dropdown-option');
+            dropdownOptions.forEach(option => {
+                option.addEventListener('click', (e) => {
+                    // Clear selected class from ALL options in ALL dropdowns
+                    document.querySelectorAll('.time-slot-dropdown-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    
+                    // Add selected class to clicked option
+                    e.target.classList.add('selected');
+                    
+                    // Store the selected time range
+                    const timeRange = e.target.dataset.value;
+                    console.log(`Selected time range for ${time}: ${timeRange}`);
+
+                    // Remove active class from all other time slots
+                    document.querySelectorAll('.time-slot').forEach(el => {
+                        if (el !== slot) {
+                            el.classList.remove('active');
+                        }
+                    });
+
+                    // Close the dropdown after selection
+                    const dropdown = slot.querySelector('.time-slot-dropdown');
+                    dropdown.style.display = 'none';
+                    if (activeSlot === slot) {
+                        activeDropdown = null;
+                        activeSlot = null;
+                    }
+                });
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!slot.contains(e.target)) {
+                    // Only hide the dropdown, don't remove the active class
+                    const dropdown = slot.querySelector('.time-slot-dropdown');
+                    dropdown.style.display = 'none';
+                    if (activeSlot === slot) {
+                        activeDropdown = null;
+                        activeSlot = null;
+                    }
+                }
             });
             
             timeSlotsContainer.appendChild(slot);
