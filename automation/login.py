@@ -12,6 +12,7 @@ from datetime import datetime
 import uuid
 import logging
 from .blob_storage import BlobStorageService
+import random
 
 # Load environment variables
 load_dotenv()
@@ -82,7 +83,8 @@ def click_member_login(sb, max_attempts=3):
         
         try:
             # Wait for element to be present and visible
-            if sb.wait_for_element_present(selector, timeout=5):
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if sb.is_element_present(selector):
                 print(f"Found login element with selector: {selector}")
                 # Try different click methods
                 try:
@@ -90,7 +92,7 @@ def click_member_login(sb, max_attempts=3):
                 except:
                     continue
                 
-                sb.wait_for_element_present("body", timeout=2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 return True
         except Exception as e:
             print(f"Failed to click {selector}: {str(e)}")
@@ -100,7 +102,7 @@ def click_member_login(sb, max_attempts=3):
     if attempt < max_attempts - 1:
         print(f"Click attempt {attempt + 1} failed, refreshing page...")
         sb.refresh()
-        sb.wait_for_element_present("body", timeout=3)
+        time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
     
     return False
 
@@ -119,27 +121,33 @@ def handle_login(sb, max_attempts=3):
                 take_error_screenshot(sb, "handle_login")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             
             # Wait for username field and enter credentials
             username_selector = "#_58_login"
-            sb.wait_for_element_present(username_selector, timeout=10)
-            sb.type(username_selector, LOGIN_CREDENTIALS["username"])
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if sb.is_element_present(username_selector):
+                sb.type(username_selector, LOGIN_CREDENTIALS["username"])
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for password field and enter credentials
             password_selector = "#_58_password"
-            sb.wait_for_element_present(password_selector, timeout=5)
-            sb.type(password_selector, LOGIN_CREDENTIALS["password"])
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if sb.is_element_present(password_selector):
+                sb.type(password_selector, LOGIN_CREDENTIALS["password"])
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Click the sign in button
             sign_in_selector = "button.btn-sign-in"
-            sb.wait_for_element_present(sign_in_selector, timeout=5)
-            sb.click(sign_in_selector)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if sb.is_element_present(sign_in_selector):
+                sb.click(sign_in_selector)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the login process
-            sb.wait_for_element_present("body", timeout=3)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Verify we're logged in (URL should change)
             current_url = sb.get_current_url()
@@ -150,13 +158,13 @@ def handle_login(sb, max_attempts=3):
             if attempt < max_attempts - 1:
                 print(f"Login attempt {attempt + 1} failed. Retrying...")
                 sb.refresh()
-                sb.wait_for_element_present("body", timeout=2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 
         except Exception as e:
             print(f"Login attempt {attempt + 1} failed with error: {str(e)}")
             take_error_screenshot(sb, "handle_login")
             if attempt < max_attempts - 1:
-                sb.wait_for_element_present("body", timeout=2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 
     return False
 
@@ -167,7 +175,7 @@ def click_fore_tees(sb, max_attempts=3):
     for attempt in range(max_attempts):
         try:
             print("Waiting for home page to load...")
-            sb.wait_for_element_present("body", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Verify we're on the correct page
             current_url = sb.get_current_url()
@@ -175,7 +183,7 @@ def click_fore_tees(sb, max_attempts=3):
                 print(f"Unexpected URL: {current_url}")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    sb.wait_for_element_present("body", timeout=2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             
@@ -214,9 +222,9 @@ def click_fore_tees(sb, max_attempts=3):
                         if "foretees.com/v5/servlet/Login" in current_url:
                             print(f"Confirmed ForeTees login page loaded: {current_url}")
                             return True
-                        sb.wait_for_element_present("body", timeout=1)
+                        time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     
-                sb.wait_for_element_present("body", timeout=1)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             print("New tab not detected")
             if attempt < max_attempts - 1:
@@ -227,7 +235,7 @@ def click_fore_tees(sb, max_attempts=3):
             print(f"Error clicking Fore Tees link: {str(e)}")
             take_error_screenshot(sb, "click_fore_tees")
             if attempt < max_attempts - 1:
-                sb.wait_for_element_present("body", timeout=2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             
     return False
@@ -250,53 +258,57 @@ def handle_foretees_navigation(sb, max_attempts=3):
         # Wait for Alex Western button
         print("Waiting for Alex Western button...")
         alex_button = "a.standard_button[alt='Alex Western']"
-        sb.wait_for_element_clickable(alex_button, timeout=15)
-        
-        # Store current tab handle to maintain focus
-        foretees_handle = sb.driver.current_window_handle
-        
-        # Click Alex Western button
-        print("Clicking Alex Western button...")
-        sb.click(alex_button)
-        
-        # Make sure we stay in the ForeTees tab
-        sb.driver.switch_to.window(foretees_handle)
-        
-        # Wait for URL to change to Member_msg or Member_announce
-        print("Waiting for page transition after clicking Alex Western...")
-        start_time = time.time()
-        while time.time() - start_time < 15:  # 15 second timeout
-            current_url = sb.get_current_url()
-            print(f"Current URL: {current_url}")  # Debug logging
-            if "Member_msg" in current_url or "Member_announce" in current_url:
-                print(f"Successfully reached page: {current_url}")
-                break
-            sb.wait_for_element_present("body", timeout=1)
-        else:
-            print(f"Timeout waiting for Member page. Current URL: {current_url}")
-            return False
+        time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+        if sb.is_element_present(alex_button):
+            # Store current tab handle to maintain focus
+            foretees_handle = sb.driver.current_window_handle
             
-        # Give the page time to fully load
-        sb.wait_for_element_present("body", timeout=2)           
-        
-        print("Hover over the parent element using SeleniumBase's hover")
-        parent_selector = "a[href='#'] span.topnav_item:contains('Tee Times')"
-        sb.hover(parent_selector)  # Built-in hover method
-        sb.wait_for_element_present("body", timeout=1)
-        
-        print("Wait for dropdown to become visible")
-        dropdown_xpath = "//a[@href='Member_select']/span[contains(., 'Make, Change, or View Tee Times')]"
-        sb.wait_for_element_visible(dropdown_xpath)
-        sb.wait_for_element_present("body", timeout=1)  # Wait for dropdown animation
+            # Click Alex Western button
+            print("Clicking Alex Western button...")
+            sb.click(alex_button)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            
+            # Make sure we stay in the ForeTees tab
+            sb.driver.switch_to.window(foretees_handle)
+            
+            # Wait for URL to change to Member_msg or Member_announce
+            print("Waiting for page transition after clicking Alex Western...")
+            start_time = time.time()
+            while time.time() - start_time < 15:  # 15 second timeout
+                current_url = sb.get_current_url()
+                print(f"Current URL: {current_url}")  # Debug logging
+                if "Member_msg" in current_url or "Member_announce" in current_url:
+                    print(f"Successfully reached page: {current_url}")
+                    break
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            else:
+                print(f"Timeout waiting for Member page. Current URL: {current_url}")
+                return False
                 
-        print("Clicking Make, Change, or View Tee Times...")        
-        sb.click_xpath(dropdown_xpath)
-        
-        # Wait for navigation to complete
-        sb.wait_for_element_present("body", timeout=2)
-        
-        return True
+            # Give the page time to fully load
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
+            print("Hover over the parent element using SeleniumBase's hover")
+            parent_selector = "a[href='#'] span.topnav_item:contains('Tee Times')"
+            sb.hover(parent_selector)  # Built-in hover method
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            
+            print("Wait for dropdown to become visible")
+            dropdown_xpath = "//a[@href='Member_select']/span[contains(., 'Make, Change, or View Tee Times')]"
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if sb.is_element_present(dropdown_xpath):
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                
+                print("Clicking Make, Change, or View Tee Times...")        
+                sb.click_xpath(dropdown_xpath)
+                
+                # Wait for navigation to complete
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                
+                return True
+            else:
+                print("Dropdown element not found")
+                return False
        
     except Exception as e:
         print(f"Error in ForeTees navigation: {str(e)}")
@@ -313,7 +325,7 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
     for attempt in range(max_attempts):
         try:
             print("Waiting for calendar to load...")
-            sb.wait_for_element_present("#member_select_calendar1", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Find the specific date and check if it's available
             # The date element must have:
@@ -329,23 +341,24 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
                 take_error_screenshot(sb, "select_tee_time_date")
                 if attempt < max_attempts - 1:
                     print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(5)  # Wait 5 seconds before retrying
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             
             # Date is available, try to click it
             print("Date is available, attempting to select...")
-            sb.wait_for_element_clickable(date_selector, timeout=10)
-            sb.click(date_selector)
-            print(f"Successfully selected {date_str}")
-            return True
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if sb.is_element_present(date_selector):
+                sb.click(date_selector)
+                print(f"Successfully selected {date_str}")
+                return True
             
         except Exception as e:
             print(f"Error selecting date (attempt {attempt + 1}): {str(e)}")
             take_error_screenshot(sb, "select_tee_time_date")
             if attempt < max_attempts - 1:
                 print("Retrying...")
-                sb.wait_for_element_present("body", timeout=2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False
 
@@ -369,12 +382,12 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
                 print("Could not find ForeTees tab")
                 if attempt < max_attempts - 1:
                     print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(5)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False, None
 
             print("Waiting for tee time sheet to load...")
-            sb.wait_for_element_present("#main > div.member_sheet_table.standard_list_table.rwdCompactible.rwdTable.rwdShowPgInFull > div.rwdTbody", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Find all rows in the tee time sheet
             rows = sb.find_elements("div.rwdTr")
@@ -407,7 +420,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
                 print("No time slots found with 4 open slots")
                 if attempt < max_attempts - 1:
                     print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(5)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False, None
             
@@ -448,7 +461,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
             
             # Scroll to the selected slot
             sb.driver.execute_script("arguments[0].scrollIntoView(true);", selected_slot[2])
-            time.sleep(1)  # Brief pause for scrolling
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Click the time button using JavaScript to avoid element interception
             sb.driver.execute_script("arguments[0].click();", selected_slot[1])
@@ -466,7 +479,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
                 if time_slot_element:
                     # Scroll the element into view
                     sb.driver.execute_script("arguments[0].scrollIntoView(true);", time_slot_element)
-                    time.sleep(1)  # Brief pause for scrolling
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             except Exception as scroll_error:
                 print(f"Could not scroll to time slot: {str(scroll_error)}")
             
@@ -478,7 +491,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
             take_error_screenshot(sb, "select_tee_time")
             if attempt < max_attempts - 1:
                 print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                time.sleep(5)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False, None
 
@@ -487,20 +500,34 @@ def handle_tee_time_popup(sb, max_attempts=3):
     for attempt in range(max_attempts):
         try:
             print("Waiting for tee time pop-up dialog to appear...")
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the dialog to appear
-            sb.wait_for_element_present(".ui-dialog.ui-widget", timeout=10)
+            if not sb.is_element_present(".ui-dialog.ui-widget"):
+                print("Dialog not found")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             
             # Wait for the "Yes, Continue" button to be present and clickable
             print("Waiting for 'Yes, Continue' button...")
-            sb.wait_for_element_clickable("button:contains('Yes, Continue')", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if not sb.is_element_present("button:contains('Yes, Continue')"):
+                print("Continue button not found")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             
             # Click the "Yes, Continue" button
             print("Clicking 'Yes, Continue' button...")
             sb.click("button:contains('Yes, Continue')")
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             print("Successfully handled tee time pop-up")
-
             return True
             
         except Exception as e:
@@ -508,7 +535,7 @@ def handle_tee_time_popup(sb, max_attempts=3):
             take_error_screenshot(sb, "handle_tee_time_popup")
             if attempt < max_attempts - 1:
                 print("Retrying...")
-                time.sleep(2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False
 
@@ -523,14 +550,22 @@ def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
                 print("Could not find TBD tab")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             sb.execute_script("arguments[0].click();", tbd_tab)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the TBD content to be visible
             print(f"Waiting for TBD content for slot {slot_number}...")
-            sb.wait_for_element_visible(".ftMs-block.ftMs-guestTbd.active", timeout=5)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if not sb.is_element_present(".ftMs-block.ftMs-guestTbd.active"):
+                print("TBD content not visible")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             
             # Click the X element
             print(f"Clicking X element for slot {slot_number}...")
@@ -539,14 +574,22 @@ def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
                 print("Could not find X element")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             sb.execute_script("arguments[0].click();", x_element)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the TBD row to be updated
             print(f"Waiting for TBD row {slot_number} to be updated...")
-            sb.wait_for_element_present(f"#slot_player_row_{slot_number}.playerTypeGuestTbd", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if not sb.is_element_present(f"#slot_player_row_{slot_number}.playerTypeGuestTbd"):
+                print("TBD row not updated")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             
             # Find and click the transport cell in the TBD row
             print(f"Clicking transport cell in TBD row {slot_number}...")
@@ -555,15 +598,24 @@ def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
                 print(f"Could not find transport cell in TBD row {slot_number}")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             sb.execute_script("arguments[0].click();", tbd_transport_cell)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the dropdown to be visible and select WLK
             print(f"Selecting WLK from dropdown in TBD row {slot_number}...")
-            sb.wait_for_element_visible(f"#slot_player_row_{slot_number}.playerTypeGuestTbd .transport_type", timeout=5)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if not sb.is_element_present(f"#slot_player_row_{slot_number}.playerTypeGuestTbd .transport_type"):
+                print("Transport dropdown not visible")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             sb.select_option_by_text(f"#slot_player_row_{slot_number}.playerTypeGuestTbd .transport_type", "WLK")
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             print(f"Successfully set slot {slot_number} as TBD with WLK transport")
             return True
@@ -573,7 +625,7 @@ def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
             take_error_screenshot(sb, "set_slot_as_tbd_with_walk")
             if attempt < max_attempts - 1:
                 print("Retrying...")
-                time.sleep(2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False
 
@@ -582,7 +634,7 @@ def modify_player_slot(sb, max_attempts=3):
     for attempt in range(max_attempts):
         try:
             print("Waiting for player slots to load...")
-            sb.wait_for_element_present(".rwdTbody.ftS-playerSlots", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Find the first player slot row
             first_slot = sb.find_element("#slot_player_row_0")
@@ -590,7 +642,7 @@ def modify_player_slot(sb, max_attempts=3):
                 print("Could not find first player slot")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             
@@ -600,22 +652,38 @@ def modify_player_slot(sb, max_attempts=3):
                 print("Could not find transport cell")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             
             # Click the transport cell
             print("Clicking transport cell...")
             sb.execute_script("arguments[0].click();", transport_cell)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the dropdown to be visible and select WLK
             print("Selecting WLK from dropdown...")
-            sb.wait_for_element_visible(".transport_type", timeout=5)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if not sb.is_element_present(".transport_type"):
+                print("Transport dropdown not visible")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             sb.select_option_by_text(".transport_type", "WLK")
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             # Wait for the member select dialog to appear
             print("Waiting for member select dialog...")
-            sb.wait_for_element_present(".ftMs-memberSelect", timeout=10)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+            if not sb.is_element_present(".ftMs-memberSelect"):
+                print("Member select dialog not visible")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
+                    continue
+                return False
             
             # Set slots 1, 2, and 3 as TBD with WLK transport
             for slot_number in range(1, 4):  # This will handle slots 1, 2, and 3
@@ -623,11 +691,11 @@ def modify_player_slot(sb, max_attempts=3):
                     print(f"Failed to set slot {slot_number} as TBD")
                     if attempt < max_attempts - 1:
                         print("Retrying...")
-                        time.sleep(2)
+                        time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                         continue
                     return False
                 # Add a small delay between slots
-                time.sleep(1)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             print("Successfully modified all player slots")
             
@@ -638,10 +706,11 @@ def modify_player_slot(sb, max_attempts=3):
                 print("Could not find Submit Request button")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
             sb.execute_script("arguments[0].click();", submit_button)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             return True
             
@@ -650,7 +719,7 @@ def modify_player_slot(sb, max_attempts=3):
             take_error_screenshot(sb, "modify_player_slot")
             if attempt < max_attempts - 1:
                 print("Retrying...")
-                time.sleep(2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False
 
@@ -670,7 +739,7 @@ def handle_confirmation_popup(sb, max_attempts=3):
                 print("Could not find ForeTees tab")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
 
@@ -681,6 +750,7 @@ def handle_confirmation_popup(sb, max_attempts=3):
             # Click the button using JavaScript
             print("Clicking Continue button...")
             sb.execute_script("arguments[0].click();", button)
+            time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             
             print("Successfully handled confirmation popup")           
             return True
@@ -690,7 +760,7 @@ def handle_confirmation_popup(sb, max_attempts=3):
             take_error_screenshot(sb, "handle_confirmation_popup")
             if attempt < max_attempts - 1:
                 print("Retrying...")
-                time.sleep(2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False
         
@@ -704,12 +774,12 @@ def handle_logout(sb, max_attempts=3):
             if exit_link:
                 print("Clicking Exit link...")
                 sb.execute_script("arguments[0].click();", exit_link)
-                time.sleep(2)  # Wait for page transition
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             else:
                 print("Could not find Exit link")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
 
@@ -719,12 +789,12 @@ def handle_logout(sb, max_attempts=3):
             if return_button:
                 print("Clicking RETURN button...")
                 sb.execute_script("arguments[0].click();", return_button)
-                time.sleep(2)  # Wait for tab to close
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
             else:
                 print("Could not find RETURN button")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
 
@@ -740,7 +810,7 @@ def handle_logout(sb, max_attempts=3):
                 print("Could not find Capital City Club tab")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
 
@@ -751,13 +821,13 @@ def handle_logout(sb, max_attempts=3):
             if logout_link:
                 print("Clicking Logout link...")
                 sb.execute_script("arguments[0].click();", logout_link)
-                time.sleep(2)  # Wait for logout to complete
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 return True
             else:
                 print("Could not find Logout link")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
-                    time.sleep(2)
+                    time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                     continue
                 return False
 
@@ -766,7 +836,7 @@ def handle_logout(sb, max_attempts=3):
             take_error_screenshot(sb, "handle_logout")
             if attempt < max_attempts - 1:
                 print("Retrying...")
-                time.sleep(2)
+                time.sleep(random.uniform(0.2, 0.8))  # Random delay between 200-800ms
                 continue
             return False
 
