@@ -422,6 +422,29 @@ function setupTimeSlots() {
                 if (result.status === 'success') {
                     alert('Reservation submitted successfully!');
                     modal.style.display = 'none';
+                    
+                    // Clear the selected values
+                    selectedDate = null;
+                    selectedTime = null;
+                    selectedTimeRange = '0';
+                    
+                    // Remove active class from calendar day
+                    const activeDay = document.querySelector('.calendar-day.active');
+                    if (activeDay) {
+                        activeDay.classList.remove('active');
+                    }
+                    
+                    // Remove active class from time slot
+                    const activeTimeSlot = document.querySelector('.time-slot.active');
+                    if (activeTimeSlot) {
+                        activeTimeSlot.classList.remove('active');
+                    }
+                    
+                    // Reset the time slot dropdown if it's open
+                    const dropdown = activeTimeSlot?.querySelector('.time-slot-dropdown');
+                    if (dropdown) {
+                        dropdown.style.display = 'none';
+                    }
                 } else {
                     alert('Error submitting reservation: ' + result.message);
                     modal.style.display = 'none';
