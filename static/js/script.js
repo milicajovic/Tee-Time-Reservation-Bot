@@ -3,6 +3,7 @@ let currentYear;
 let currentMonth;
 let selectedDate = null;
 let selectedTime = null;
+let selectedTimeRange = '0';  // Default to '0' (Exact)
 
 document.addEventListener('DOMContentLoaded', function() {
     // Get current date
@@ -198,15 +199,16 @@ function setupTimeSlots() {
             const slot = document.createElement('div');
             slot.className = 'time-slot';
             const options = [
-                { value: 'exact', text: 'Exact' },
-                { value: '12min', text: '±12 min' },
-                { value: '24min', text: '±24 min' },
-                { value: '36min', text: '±36 min' },
-                { value: '1hr', text: '±1 hr' },
-                { value: '2hr', text: '±2 hr' },
-                { value: '3hr', text: '±3 hr' },
-                { value: '4hr', text: '±4 hr' },
-                { value: '5hr', text: '±5 hr' }
+                { value: '0', text: 'Exact' },
+                { value: '12', text: '±12 min' },
+                { value: '24', text: '±24 min' },
+                { value: '36', text: '±36 min' },
+                { value: '48', text: '±48 min' },
+                { value: '60', text: '±1 hr' },
+                { value: '120', text: '±2 hr' },
+                { value: '180', text: '±3 hr' },
+                { value: '240', text: '±4 hr' },
+                { value: '300', text: '±5 hr' }
             ];
 
             slot.innerHTML = `
@@ -290,8 +292,8 @@ function setupTimeSlots() {
                     e.target.classList.add('selected');
                     
                     // Store the selected time range
-                    const timeRange = e.target.dataset.value;
-                    console.log(`Selected time range for ${time}: ${timeRange}`);
+                    selectedTimeRange = e.target.dataset.value;
+                    console.log(`Selected time range for ${time}: ${selectedTimeRange}`);
 
                     // Remove active class from all other time slots
                     document.querySelectorAll('.time-slot').forEach(el => {
@@ -406,7 +408,8 @@ function setupTimeSlots() {
                     },
                     body: JSON.stringify({
                         date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`,
-                        time: selectedTime
+                        time: selectedTime,
+                        time_slot_range: selectedTimeRange
                     })
                 });
 

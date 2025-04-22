@@ -349,8 +349,12 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
                 continue
             return False
 
-def select_tee_time(sb, desired_time, max_attempts=3):
-    """Select the desired tee time from the available slots"""
+class NoSlotWithinRange(Exception):
+    """Raised when no tee time slots are available within the allowed range"""
+    pass
+
+def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
+    """Select the desired tee time from the available slots within the allowed range"""
     for attempt in range(max_attempts):
         try:
             # Ensure we're on the ForeTees tab
@@ -409,81 +413,72 @@ def select_tee_time(sb, desired_time, max_attempts=3):
             
             # Convert times to minutes for comparison
             def time_to_minutes(time_str):
-                time_str = time_str.upper()
-                is_pm = "PM" in time_str
-                time_str = time_str.replace(" AM", "").replace(" PM", "")
-                hours, minutes = map(int, time_str.split(":"))
-                if is_pm and hours != 12:
-                    hours += 12
-                return hours * 60 + minutes
-            
-            # First try to find exact match
-            desired_time_min = time_to_minutes(desired_time)
-            exact_match = None
-            closest_time = None
-            min_time_diff = float('inf')
-            
-            for time_text, time_button, row in available_slots:
-                current_time_min = time_to_minutes(time_text)
-                time_diff = abs(current_time_min - desired_time_min)
-                
-                if time_diff == 0:
-                    exact_match = (time_text, time_button, row)
-                    break
-                    
-                if time_diff < min_time_diff:
-                    min_time_diff = time_diff
-                    closest_time = (time_text, time_button, row)
-            
-            # Select the time
-            if exact_match:
-                time_text, time_button, row = exact_match
-                print(f"Found exact match for desired time: {time_text}")
+                try:
+                    # Parse the time string (e.g., "9:00 AM")
+                    time_obj = datetime.strptime(time_str, "%I:%M %p")
+                    return time_obj.hour * 60 + time_obj.minute
+                except ValueError:
+                    print(f"Error parsing time string: {time_str}")
+                    return None
+
+            def get_time_difference(time1, time2):
+                minutes1 = time_to_minutes(time1)
+                minutes2 = time_to_minutes(time2)
+                if minutes1 is None or minutes2 is None:
+                    return float('inf')
+                return abs(minutes1 - minutes2)
+
+            # Filter slots based on time_slot_range
+            if time_slot_range == 0:
+                # Exact match only
+                exact_slots = [slot for slot in available_slots if get_time_difference(slot[0], desired_time) == 0]
+                if not exact_slots:
+                    raise NoSlotWithinRange("No exact time slot available")
+                available_slots = exact_slots
             else:
-                time_text, time_button, row = closest_time
-                print(f"Found closest available time: {time_text} (difference: {min_time_diff} minutes from desired time {desired_time})")
+                # Filter slots within range
+                available_slots = [slot for slot in available_slots 
+                                 if get_time_difference(slot[0], desired_time) <= time_slot_range]
+                if not available_slots:
+                    raise NoSlotWithinRange(f"No time slots available within {time_slot_range} minutes")
+
+            # Sort by time difference and pick closest
+            available_slots.sort(key=lambda x: get_time_difference(x[0], desired_time))
+            selected_slot = available_slots[0]
             
-            # Scroll the row into center view and take a screenshot
-            print(f"Taking screenshot of selected time slot: {time_text}")
-            sb.execute_script("arguments[0].scrollIntoView({block: 'center', behavior: 'instant'});", row)
-            time.sleep(1)  # Give the page a moment to settle after scrolling
+            # Scroll to the selected slot
+            sb.driver.execute_script("arguments[0].scrollIntoView(true);", selected_slot[2])
+            time.sleep(1)  # Brief pause for scrolling
             
-            # Create screenshots directory if it doesn't exist
-            screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots', 'temp')
-            os.makedirs(screenshots_dir, exist_ok=True)
+            # Click the time button using JavaScript to avoid element interception
+            sb.driver.execute_script("arguments[0].click();", selected_slot[1])
+            print(f"Successfully selected time slot: {selected_slot[0]}")
             
-            # Generate timestamp and filename
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"selected_time_{time_text.replace(':', '')}_{timestamp}.png"
-            filepath = os.path.join(screenshots_dir, filename)
+            return True, selected_slot[0]
             
-            # Take the screenshot
-            sb.save_screenshot(filepath)
-            print(f"Screenshot saved temporarily: {filepath}")
-            
-            # Upload to blob storage
+        except NoSlotWithinRange as e:
+            print(f"No slots within range: {str(e)}")
+            # Try to find and scroll to the desired time slot
             try:
-                blob_service.upload_screenshot(filepath, "successful_reservation")
-                # Remove local file after successful upload
-                os.remove(filepath)
-                print(f"Local file removed: {filepath}")
-            except Exception as e:
-                print(f"Failed to upload screenshot: {str(e)}")
-                if os.path.exists(filepath):
-                    os.remove(filepath)
+                # Find the time slot element that matches the desired time
+                time_slot_selector = f"div.time_slot:contains('{desired_time}'), a.teetime_button:contains('{desired_time}')"
+                time_slot_element = sb.find_element(time_slot_selector)
+                if time_slot_element:
+                    # Scroll the element into view
+                    sb.driver.execute_script("arguments[0].scrollIntoView(true);", time_slot_element)
+                    time.sleep(1)  # Brief pause for scrolling
+            except Exception as scroll_error:
+                print(f"Could not scroll to time slot: {str(scroll_error)}")
             
-            # Click the time button using JavaScript
-            sb.execute_script("arguments[0].click();", time_button)
-            print(f"Successfully selected time: {time_text}")
-            
-            return True, time_text
-            
+            # Take a screenshot when no slots are available within range
+            take_error_screenshot(sb, "no_slots_available")
+            raise
         except Exception as e:
-            print(f"Error selecting tee time (attempt {attempt + 1}): {str(e)}")
+            print(f"Error selecting tee time: {str(e)}")
             take_error_screenshot(sb, "select_tee_time")
             if attempt < max_attempts - 1:
-                print("Retrying...")
-                sb.wait_for_element_present("body", timeout=2)
+                print(f"Retry attempt {attempt + 1} of {max_attempts}")
+                time.sleep(5)
                 continue
             return False, None
 
@@ -816,7 +811,7 @@ def send_email(reservation_date, reservation_time, success=True):
     except Exception as e:
         logging.error(f"Error sending email: {e}")
 
-def open_website(reservation_date, reservation_time):
+def open_website(reservation_date, reservation_time, time_slot_range=0):
     try:
         url = os.getenv('CLUB_URL')
         print(f"Attempting to navigate to: {url}")
@@ -852,10 +847,14 @@ def open_website(reservation_date, reservation_time):
                 raise Exception("Failed to select tee time date")
             
             print("Proceeding with tee time selection...")
-            success, actual_time = select_tee_time(sb, reservation_time)
-            if not success:
+            try:
+                success, actual_time = select_tee_time(sb, reservation_time, time_slot_range)
+                if not success:
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to select tee time")
+            except NoSlotWithinRange as e:
                 send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to select tee time")
+                raise Exception(f"No available tee times within the allowed range: {str(e)}")
             
             # Handle the pop-up dialog
             if not handle_tee_time_popup(sb):
@@ -893,11 +892,12 @@ def open_website(reservation_date, reservation_time):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python login.py <YYYY-MM-DD> <hh:mm [AM|PM]>")
+        print("Usage: python login.py <YYYY-MM-DD> <hh:mm [AM|PM]> [time_slot_range]")
         sys.exit(1)
 
     date_arg = sys.argv[1]
     time_arg = sys.argv[2]
+    time_slot_range = int(sys.argv[3]) if len(sys.argv) > 3 else 0
 
-    open_website(date_arg, time_arg) 
+    open_website(date_arg, time_arg, time_slot_range) 
  
