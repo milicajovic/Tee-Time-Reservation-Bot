@@ -1,6 +1,5 @@
 from azure.storage.blob import BlobServiceClient
 import os
-import uuid
 import logging
 from datetime import datetime
 
@@ -8,9 +7,8 @@ class BlobStorageService:
     def __init__(self):
         self.connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
         self.container_name = os.getenv("AZURE_STORAGE_BLOB_CONTAINER_NAME")
-        self.session_id = str(uuid.uuid4())
-        self.screenshot_urls = []
-        self.success_screenshot_url = None
+        self.current_reservation_folder = None
+        self.current_attempt = None
         
         if not self.connection_string or not self.container_name:
             raise ValueError("Missing blob storage configuration in environment variables")
@@ -18,44 +16,42 @@ class BlobStorageService:
         self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
         self.container_client = self.blob_service_client.get_container_client(self.container_name)
         
-    def start_new_session(self):
-        """Start a new session with a fresh session_id"""
-        self.session_id = str(uuid.uuid4())
-        self.screenshot_urls = []
-        self.success_screenshot_url = None
-        logging.info(f"Started new session with ID: {self.session_id}")
+    def set_reservation_context(self, row_key, retry_count):
+        """Set the current reservation context for uploading screenshots"""
+        self.current_reservation_folder = row_key
+        self.current_attempt = retry_count
+        logging.info(f"Set reservation context: folder={row_key}, attempt={retry_count}")
         
     def upload_screenshot(self, local_file_path, method_name):
-        """Upload a screenshot to blob storage and return its URL"""
+        """Upload a screenshot to blob storage in the correct attempt folder"""
         try:
-            # Generate blob name with session_id/method_timestamp.png format
+            if not self.current_reservation_folder or self.current_attempt is None:
+                raise ValueError("No active reservation context")
+                
+            # Generate blob name with folder structure
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            blob_name = f"{self.session_id}/{method_name}_{timestamp}.png"
+            blob_name = f"{self.current_reservation_folder}/Attempt_{self.current_attempt}/{method_name}_{timestamp}.png"
             
             # Upload the file
             blob_client = self.container_client.get_blob_client(blob_name)
             with open(local_file_path, "rb") as data:
                 blob_client.upload_blob(data, overwrite=True)
             
-            # Get the public URL
-            url = blob_client.url
-            self.screenshot_urls.append(url)
             logging.info(f"Uploaded screenshot {blob_name} to blob storage")
-            return url
             
         except Exception as e:
             logging.error(f"Failed to upload screenshot: {str(e)}")
-            return None
             
-    def get_screenshot_urls(self):
-        """Return all screenshot URLs from the current session"""
-        return self.screenshot_urls
-        
-    def set_success_screenshot(self, url):
-        """Set the success screenshot URL for the current session"""
-        self.success_screenshot_url = url
-        logging.info(f"Set success screenshot URL: {url}")
-        
-    def get_success_screenshot_url(self):
-        """Get the success screenshot URL for the current session"""
-        return self.success_screenshot_url 
+    def get_reservation_folder_url(self):
+        """Get the URL for the current reservation folder"""
+        if self.current_reservation_folder:
+            # Get the storage account name from environment variable
+            account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME")
+            if not account_name:
+                raise ValueError("AZURE_STORAGE_ACCOUNT_NAME environment variable is not set")
+            
+            # Construct the Azure Storage URL
+            container_url = f"https://{account_name}.blob.core.windows.net/{self.container_name}"
+            folder_url = f"{container_url}/{self.current_reservation_folder}"
+            return folder_url
+        return None 

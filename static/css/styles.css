@@ -607,11 +607,14 @@ body {
     }
     
     .reservation-action {
-        text-align: center;
-        margin-top: 10px;
-        width: 100%;
-        display: flex;
         justify-content: center;
+        gap: 12px;
+    }
+    
+    .external-link-icon {
+        width: 18px !important;
+        height: 18px !important;
+        margin-right: 12px;
     }
     
     .delete-reservation-btn {
@@ -1097,10 +1100,23 @@ body {
     justify-content: center;
 }
 
-
 .reservation-action {
     flex: 1;
     text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+}
+
+.external-link-icon {
+    opacity: 1;
+    transition: opacity 0.2s ease;
+    margin-right: 8px;
+}
+
+.external-link-icon:hover {
+    opacity: 0.8;
 }
 
 .delete-reservation-btn {
@@ -1209,7 +1225,6 @@ body {
     color: #333;
     width: 100%;
 }
-
 
 .reservation-header .reservation-status {
     text-align: center;

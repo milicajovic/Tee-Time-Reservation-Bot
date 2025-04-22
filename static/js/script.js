@@ -501,10 +501,20 @@ function createReservationRow(reservation) {
     const formattedDate = formatDate(reservation.date);
     const formattedTime = formatTime(reservation.time);
     
+    // Determine which external link icon to use and if it should be clickable
+    const shouldShowEnabledLink = reservation.status === 'failed' || 
+                                 reservation.status === 'executed' || 
+                                 (reservation.status === 'pending' && reservation.retry_count > 0);
+    
+    const externalLinkIcon = shouldShowEnabledLink ? 
+        'external-link-enabled.png' : 
+        'external-link-disabled.png';
+    
     row.innerHTML = `
         <div class="reservation-date">${formattedDate} at ${formattedTime}</div>
         <div class="reservation-status ${reservation.status}">${reservation.status}</div>
         <div class="reservation-action">
+            <img src="/static/images/${externalLinkIcon}" alt="External Link" class="external-link-icon" style="cursor: pointer; margin-right: 8px; width: 20px; height: 20px; vertical-align: middle;">
             <button class="delete-reservation-btn" ${reservation.status !== 'pending' ? 'disabled' : ''}>
                 Cancel
             </button>
@@ -518,6 +528,14 @@ function createReservationRow(reservation) {
             if (confirm(`Are you sure you want to cancel the reservation for ${formattedDate} at ${formattedTime}?`)) {
                 cancelReservation(reservation.date, reservation.time, row);
             }
+        });
+    }
+    
+    // Add click event listener for the external link icon
+    const externalLinkImg = row.querySelector('.external-link-icon');
+    if (shouldShowEnabledLink && reservation.screenshot_folder_url) {
+        externalLinkImg.addEventListener('click', function() {
+            window.open(reservation.screenshot_folder_url, '_blank');
         });
     }
     

@@ -64,7 +64,8 @@ def submit():
             "utc_activation_time": utc_activation_time,
             "status": "pending",  # default status
             "locked_until": datetime(1970, 1, 1, tzinfo=pytz.utc),
-            "retry_count": 0                 # Default retry count is 0
+            "retry_count": 0,                 # Default retry count is 0
+            "screenshot_folder_url": ""     # Will be set when processing starts
         }
 
         # Insert the entity into the table
@@ -174,8 +175,20 @@ def run_reservation():
     entity["status"]      = "locked"
     entity["locked_until"] = lock_until
     entity["retry_count"] = retry_count
+    
+    # If this is the first attempt (retry_count = 1), generate and store the screenshot folder URL
+    if retry_count == 1 and not entity.get("screenshot_folder_url"):
+        from automation.login import blob_service
+        blob_service.set_reservation_context(row_key, retry_count)
+        entity["screenshot_folder_url"] = blob_service.get_reservation_folder_url()
+        logging.info(f"Generated screenshot folder URL for reservation {row_key}")
+    
     table_client.update_entity(entity=entity, mode=UpdateMode.MERGE)
     logging.info(f"Locked reservation {row_key} until {lock_until}")
+
+    # Set up the blob storage context for this reservation
+    from automation.login import blob_service
+    blob_service.set_reservation_context(row_key, retry_count)
 
     # 3) PROCESS it
     result = {"RowKey": row_key}
@@ -216,7 +229,7 @@ def get_reservations():
         # Query all reservations, ordered by date and time
         entities = list(table_client.query_entities(
             query_filter="PartitionKey eq 'reservations'",
-            select=["date", "time", "status"]
+            select=["date", "time", "status", "retry_count", "screenshot_folder_url"]
         ))
         
         # Format the entities for the frontend
@@ -225,7 +238,9 @@ def get_reservations():
             formatted_reservations.append({
                 'date': entity['date'],
                 'time': entity['time'],
-                'status': entity['status']
+                'status': entity['status'],
+                'retry_count': entity.get('retry_count', 0),  # Default to 0 if not present
+                'screenshot_folder_url': entity.get('screenshot_folder_url', '')  # Default to empty string if not present
             })
         
         return jsonify({

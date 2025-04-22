@@ -23,7 +23,7 @@ def take_error_screenshot(sb, method_name):
     """Helper function to take and save error screenshots with timestamp"""
     try:
         # Create screenshots directory if it doesn't exist
-        screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots', 'errors')
+        screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots', 'temp')
         os.makedirs(screenshots_dir, exist_ok=True)
         
         # Generate timestamp and filename
@@ -33,17 +33,22 @@ def take_error_screenshot(sb, method_name):
         
         # Take and save screenshot
         sb.save_screenshot(filepath)
-        logging.info(f"Error screenshot saved locally: {filepath}")
+        logging.info(f"Screenshot saved temporarily: {filepath}")
 
         # Upload to Blob Storage
-        url = blob_service.upload_screenshot(filepath, method_name)
-        if url:
-            logging.info(f"Screenshot uploaded to blob storage: {url}")
+        try:
+            blob_service.upload_screenshot(filepath, method_name)
             # Remove local file after successful upload
             os.remove(filepath)
             logging.info(f"Local file removed: {filepath}")
-        else:
-            logging.error("Failed to upload screenshot to blob storage")
+        except ValueError as e:
+            logging.error(f"Failed to upload screenshot - no active reservation context: {str(e)}")
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        except Exception as e:
+            logging.error(f"Failed to upload screenshot: {str(e)}")
+            if os.path.exists(filepath):
+                os.remove(filepath)
 
     except Exception as e:
         logging.error(f"Failed to save or upload error screenshot: {str(e)}")
@@ -444,7 +449,7 @@ def select_tee_time(sb, desired_time, max_attempts=3):
             time.sleep(1)  # Give the page a moment to settle after scrolling
             
             # Create screenshots directory if it doesn't exist
-            screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots', 'selected_times')
+            screenshots_dir = os.path.join(os.path.dirname(__file__), 'screenshots', 'temp')
             os.makedirs(screenshots_dir, exist_ok=True)
             
             # Generate timestamp and filename
@@ -454,15 +459,18 @@ def select_tee_time(sb, desired_time, max_attempts=3):
             
             # Take the screenshot
             sb.save_screenshot(filepath)
-            print(f"Screenshot saved: {filepath}")
+            print(f"Screenshot saved temporarily: {filepath}")
             
-            # Upload to blob storage and set as success screenshot
-            success_url = blob_service.upload_screenshot(filepath, "successful_reservation")
-            if success_url:
-                blob_service.set_success_screenshot(success_url)
+            # Upload to blob storage
+            try:
+                blob_service.upload_screenshot(filepath, "successful_reservation")
                 # Remove local file after successful upload
-                # os.remove(filepath) ZA SADA POSLE OTKOMENTARISI
+                os.remove(filepath)
                 print(f"Local file removed: {filepath}")
+            except Exception as e:
+                print(f"Failed to upload screenshot: {str(e)}")
+                if os.path.exists(filepath):
+                    os.remove(filepath)
             
             # Click the time button using JavaScript
             sb.execute_script("arguments[0].click();", time_button)
@@ -777,23 +785,6 @@ def send_email(reservation_date, reservation_time, success=True):
     msg['From'] = sender_email
     msg['To'] = receiver_email
     
-    # Build screenshot links HTML based on success status
-    if success:
-        success_url = blob_service.get_success_screenshot_url()
-        if success_url:
-            links_html = f"<h4>Reservation Confirmation:</h4><p><a href='{success_url}'>View Selected Time</a></p>"
-        else:
-            links_html = "<p>No confirmation screenshot available.</p>"
-    else:
-        error_urls = blob_service.get_screenshot_urls()
-        if error_urls:
-            links_html = "<h4>Error Screenshots:</h4>"
-            for url in error_urls:
-                filename = os.path.basename(url)
-                links_html += f'<p><a href="{url}">{filename}</a></p>'
-        else:
-            links_html = "<p>No error screenshots were captured in this session.</p>"
-    
     if success:
         html = f"""<html>
         <body>
@@ -801,7 +792,6 @@ def send_email(reservation_date, reservation_time, success=True):
             <p>Your tee time has been booked.</p>
             <p>Date: {reservation_date}<br>
                Time: {reservation_time}</p>
-            {links_html}
             <p>Thank you for using our service!</p>
         </body>
         </html>"""
@@ -810,7 +800,6 @@ def send_email(reservation_date, reservation_time, success=True):
         <body>
             <h3 style="color:#8b0000;">Reservation Failed</h3>
             <p>We were unable to book your tee time.</p>
-            {links_html}
             <p>Please try again later or contact support if the issue persists.</p>
             <p>We apologize for any inconvenience.</p>
         </body>
@@ -829,8 +818,6 @@ def send_email(reservation_date, reservation_time, success=True):
 
 def open_website(reservation_date, reservation_time):
     try:
-        # Start a new session for this run
-        blob_service.start_new_session()
         url = os.getenv('CLUB_URL')
         print(f"Attempting to navigate to: {url}")
                 
