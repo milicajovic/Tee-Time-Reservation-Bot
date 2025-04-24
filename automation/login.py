@@ -280,12 +280,11 @@ def handle_foretees_navigation(sb, max_attempts=3):
         if sb.is_element_present(alex_button):
             # Store current tab handle to maintain focus
             foretees_handle = sb.driver.current_window_handle
-            
+            take_error_screenshot(sb, "14.before_clicking_Alex_Western_button")
             # Click Alex Western button
             print("Clicking Alex Western button...")
             sb.click(alex_button)
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            
             # Make sure we stay in the ForeTees tab
             sb.driver.switch_to.window(foretees_handle)
             
@@ -297,6 +296,7 @@ def handle_foretees_navigation(sb, max_attempts=3):
                 print(f"Current URL: {current_url}")  # Debug logging
                 if "Member_msg" in current_url or "Member_announce" in current_url:
                     print(f"Successfully reached page: {current_url}")
+                    take_error_screenshot(sb, "15.after_clicking_Alex_Western_button")
                     break
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             else:
@@ -306,6 +306,7 @@ def handle_foretees_navigation(sb, max_attempts=3):
             # Give the page time to fully load
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
+            take_error_screenshot(sb, "16.waiting_for_continue_button")
             print("Hover over the parent element using SeleniumBase's hover")
             parent_selector = "a[href='#'] span.topnav_item:contains('Tee Times')"
             sb.hover(parent_selector)  # Built-in hover method
@@ -317,9 +318,11 @@ def handle_foretees_navigation(sb, max_attempts=3):
             if sb.is_element_present(dropdown_xpath):
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                 
-                print("Clicking Make, Change, or View Tee Times...")        
-                sb.click_xpath(dropdown_xpath)
+                print("Clicking Make, Change, or View Tee Times...")   
                 
+                take_error_screenshot(sb, "17.before_clicking_Make_Change_or_View_Tee_Times")     
+                sb.click_xpath(dropdown_xpath)
+                take_error_screenshot(sb, "18.after_clicking_Make_Change_or_View_Tee_Times")
                 # Wait for navigation to complete
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                 
@@ -343,7 +346,7 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
     for attempt in range(max_attempts):
         try:
             print("Waiting for calendar to load...")
-            take_error_screenshot(sb, "14.found_date_picker")
+            take_error_screenshot(sb, "19.found_date_picker")
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
             # Find the specific date and check if it's available
@@ -369,7 +372,7 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             if sb.is_element_present(date_selector):
                 sb.click(date_selector)
-                take_error_screenshot(sb, "15.after_date_selection")
+                take_error_screenshot(sb, "20.after_date_selection")
                 print(f"Successfully selected {date_str}")
                 return True
             
@@ -412,7 +415,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
             # Find all rows in the tee time sheet
             rows = sb.find_elements("div.rwdTr")
             print(f"Found {len(rows)} total rows")
-            take_error_screenshot(sb, "16.found_time_slots")
+            take_error_screenshot(sb, "21.found_time_slots")
             
             # Find all available time slots with exactly 4 open slots
             available_slots = []
@@ -486,7 +489,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
             
             # Click the time button using JavaScript to avoid element interception
             sb.driver.execute_script("arguments[0].click();", selected_slot[1])
-            take_error_screenshot(sb, "17.after_time_selection")
+            take_error_screenshot(sb, "22.after_time_selection")
             print(f"Successfully selected time slot: {selected_slot[0]}")
             
             return True, selected_slot[0]
@@ -533,7 +536,7 @@ def handle_tee_time_popup(sb, max_attempts=3):
                     continue
                 return False
             
-            take_error_screenshot(sb, "18.popup_appeared")
+            take_error_screenshot(sb, "23.popup_appeared")
             
             # Wait for the "Yes, Continue" button to be present and clickable
             print("Waiting for 'Yes, Continue' button...")
@@ -549,7 +552,7 @@ def handle_tee_time_popup(sb, max_attempts=3):
             # Click the "Yes, Continue" button
             print("Clicking 'Yes, Continue' button...")
             sb.click("button:contains('Yes, Continue')")
-            take_error_screenshot(sb, "19.after_popup_handling")
+            take_error_screenshot(sb, "24.after_popup_handling")
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
             print("Successfully handled tee time pop-up")
@@ -579,7 +582,7 @@ def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
                     continue
                 return False
             sb.execute_script("arguments[0].click();", tbd_tab)
-            take_error_screenshot(sb, "20.found_slot")
+            take_error_screenshot(sb, "25.found_slot")
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
             # Wait for the TBD content to be visible
@@ -641,7 +644,7 @@ def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
                     continue
                 return False
             sb.select_option_by_text(f"#slot_player_row_{slot_number}.playerTypeGuestTbd .transport_type", "WLK")
-            take_error_screenshot(sb, "21.after_tbd_set")
+            take_error_screenshot(sb, "26.after_tbd_set")
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
             print(f"Successfully set slot {slot_number} as TBD with WLK transport")
@@ -673,7 +676,7 @@ def modify_player_slot(sb, max_attempts=3):
                     continue
                 return False
             
-            take_error_screenshot(sb, "22.found_player_slot")
+            take_error_screenshot(sb, "27.found_player_slot")
             
             # Find and click the transport cell
             transport_cell = first_slot.find_element(By.CSS_SELECTOR, ".ftS-trasportCell")
@@ -727,7 +730,7 @@ def modify_player_slot(sb, max_attempts=3):
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
             print("Successfully modified all player slots")
-            take_error_screenshot(sb, "23.after_player_modification")
+            take_error_screenshot(sb, "28.after_player_modification")
             
             # Click the Submit Request button
             print("Clicking Submit Request button...")
@@ -777,12 +780,12 @@ def handle_confirmation_popup(sb, max_attempts=3):
             # Use XPath to find the Continue button
             button = sb.find_element("//button[.//span[text()='Continue']]")
             
-            take_error_screenshot(sb, "24.confirmation_popup_appeared")
+            take_error_screenshot(sb, "29.confirmation_popup_appeared")
             
             # Click the button using JavaScript
             print("Clicking Continue button...")
             sb.execute_script("arguments[0].click();", button)
-            take_error_screenshot(sb, "25.after_confirmation_handling")
+            take_error_screenshot(sb, "30.after_confirmation_handling")
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
             print("Successfully handled confirmation popup")           
@@ -851,17 +854,17 @@ def handle_logout(sb, max_attempts=3):
             print("Looking for Logout link...")
             logout_link = sb.find_element("//a[@href='/c/portal/logout']")
             
-            take_error_screenshot(sb, "26.found_logout_button")
+            take_error_screenshot(sb, "31.found_logout_button")
             
             if logout_link:
                 print("Clicking Logout link...")
                 sb.execute_script("arguments[0].click();", logout_link)
-                take_error_screenshot(sb, "27.after_logout_click")
+                take_error_screenshot(sb, "32.after_logout_click")
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                 
                 # Verify logout
                 if "login" in sb.get_current_url():
-                    take_error_screenshot(sb, "28.logout_successful")
+                    take_error_screenshot(sb, "33.logout_successful")
                     return True
             else:
                 print("Could not find Logout link")
