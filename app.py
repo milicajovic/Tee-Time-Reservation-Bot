@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import pytz
 import uuid
 from automation.login import open_website
+from weather_service import get_daily_weather
 
 # Import the Azure Data Tables client
 from azure.data.tables import TableServiceClient, UpdateMode
@@ -292,6 +293,18 @@ def cancel_reservation():
             'message': str(e)
         }), 500
 
+@app.route('/weather', methods=['GET'])
+def weather():
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({"error":"`date` param required"}), 400
+
+    try:
+        weather = get_daily_weather(date_str)
+        return jsonify(weather)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
 @app.route('/gallery')
 def gallery():
     date = request.args.get('date')

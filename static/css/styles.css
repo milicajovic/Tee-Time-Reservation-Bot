@@ -1818,3 +1818,286 @@ body {
     position: fixed !important;  
     bottom: 0.6rem;
     right: 0.6rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    transition: transform 0.2s, opacity 0.3s;
+    position: relative;
+}
+
+.chat-widget-button:hover {
+    transform: scale(1.05);
+}
+
+.chat-widget-button.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.chat-icon {
+    color: var(--navy);
+    font-size: 1.5rem;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 22px;
+    height: 22px;
+    background-color: #8b0000; /* Deep red */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.notification-badge.active {
+    opacity: 1;
+}
+
+.chat-widget-container {
+    position: fixed;
+    bottom: 0.6rem;
+    right: 0.6rem;
+    width: 300px; /* Reduced width */
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    flex-direction: column;
+    max-height: 450px;
+    height: 450px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.chat-widget-container.active {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.chat-header {
+    padding: 1.6rem 1.5rem;
+    background-color: white;
+    border-bottom: 1px solid var(--soft-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+}
+
+.chat-title {
+    font-family: 'Snell Roundhand';
+    padding-top: 0.2rem;
+    color: var(--navy);
+    font-size: 1.6rem;
+    margin: 0;
+    font-style: italic;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    text-align: center;
+}
+
+.chat-close {
+    background: none;
+    border: none;
+    color: #444;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0;
+    line-height: 1;
+    position: absolute;
+    right: 1rem;
+    z-index: 2;
+}
+
+.chat-body {
+    padding: 1.5rem;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.chat-message {
+    margin: 0;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s, transform 0.5s;
+    font-family: 'Futura Light';
+    display: flex;
+    width: fit-content;
+    align-items: flex-start;
+}
+
+.chat-message.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.message-content {
+    background-color: #e5e8eb;
+    padding: 0.75rem 1.2rem;
+    border-radius: 24px;
+    display: inline-block;
+    max-width: 100%;
+    position: relative;
+}
+
+.message-content p,
+.message-content div,
+.message-content span {
+    margin-bottom: 0;
+    margin-top: 0;
+}
+
+.weather-message {
+    display: flex;
+    flex-direction: column;
+}
+
+.weather-date {
+    font-family: 'Futura Light';
+    font-weight: normal;
+    margin-bottom: 0.5rem;
+}
+
+.weather-details {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    color: #444;
+}
+
+.weather-details .wi {
+    font-size: 2rem;    /* adjust to whatever you like */
+    line-height: 1;     /* keep it tight */
+    margin-right: 1rem;
+    color: #333;
+}
+
+.weather-temp {
+    font-size: 1.25rem;
+    font-weight: bold;
+}
+
+.weather-condition {
+    margin-top: 0.25rem;
+}
+
+.weather-forecast {
+    margin-top: 0.5rem;
+    font-style: italic;
+    color: #555;
+}
+
+.chat-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--soft-gray);
+    text-align: center;
+    font-size: 0.65rem;    
+    color: #999;
+}
+
+.chat-footer a {    
+    color: #999;
+    text-decoration: none;
+    border-bottom: 1px solid var(--navy);
+    transition: border-color 0.2s;
+}
+
+.chat-footer a:hover {
+    border-color: transparent;
+}
+
+.chat-actions {
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chat-action-button {
+    background-color: var(--soft-gray);
+    border: none;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s;
+    color: #333;
+    text-decoration: none;
+    border-radius: 50px;
+}
+
+.chat-action-button:hover {
+    background-color: #e2e6ea;
+}
+
+.action-icon {
+    width: 24px;
+    height: 24px;
+    background-color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.75rem;
+    color: var(--navy);
+}
+
+.chat-message:not(:last-child) {
+    margin-bottom: 0.5rem;
+}
+
+.chat-button-close {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 23px;
+    height: 23px;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.chat-button-close i {
+    color: #444;
+    font-size: 1.1rem;
+}
+
+.chat-widget-button:hover .chat-button-close {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Only show close button if notification-badge is not active */
+.chat-widget-button:hover .notification-badge.active ~ .chat-button-close {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
