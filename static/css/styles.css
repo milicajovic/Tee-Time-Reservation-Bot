@@ -1,3 +1,20 @@
+:root {
+    --navy: #0a1f44;
+    --dark-navy: #071630;
+    --off-white: #f8f9fa;
+    --soft-gray: #e9ecef;
+    --medium-gray: #adb5bd;
+
+    --failed-color: #8b0000; /* Deep, dark red */
+    --executed-color: #1e5631; /* Deep green */
+    --locked-color: #2c4b7c; /* Deep blue */
+    
+    /* Status background colors (very subtle) */
+    --failed-bg: rgba(139, 0, 0, 0.05);
+    --executed-bg: rgba(30, 86, 49, 0.05);
+    --locked-bg: rgba(44, 75, 124, 0.05);
+}
+
 @font-face {
     font-family: 'Minion Pro Caption';
     src: url('../fonts/Minion-Pro-Caption.otf') format('opentype');
@@ -44,7 +61,6 @@ body {
 .main-header {
     /* background-color: #21345C ; */
     background-color: #f7f7f7 ;
-    color: white;
     padding: 10px 0;
     width: 100%;
     position: relative;
@@ -96,6 +112,7 @@ body {
     align-items: center;
     padding-top: 40px;
     flex: 1 0 auto;
+    padding-bottom: 4rem;
 }
 
 .select-date-and-time-container {
@@ -363,7 +380,7 @@ body {
     border-top: none;
     max-height: 130px;
     overflow-y: auto;
-    z-index: 9999;
+    z-index: 999;
     display: none;
     box-shadow: 0 2px 4px rgba(0,0.2,0.2,0.3);
     width: 100%;
@@ -423,7 +440,7 @@ body {
     display: flex;
     justify-content: center;
     gap: 10px;
-    margin-top: 0px;
+    margin-top: auto;
 }
 
 .time-nav-btn {
@@ -538,6 +555,10 @@ body {
     .time-slots {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
+    }
+    
+    .time-slot {
+        min-width: 145px;  /* Override the default min-width for mobile */
     }
     
     .book-button {
@@ -760,7 +781,7 @@ body {
     }
     
     .reservation-status {
-        font-size: 14px;
+        font-size: 16px;
         color: #333;
         text-align: left !important;
         justify-content: flex-start !important;
@@ -1183,7 +1204,7 @@ body {
     align-items: center;
     max-width: 1128px;
     margin: 0 auto;
-    padding: 0 40px;
+    padding: 10px 40px;
     font-size: 14.5px;    
     font-family: 'Sator Regular', sans-serif;
 }
@@ -1243,4 +1264,557 @@ body {
     text-align: right;
 }
 
-      
+/* Gallery Styles */
+.gallery-container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 40px;
+    flex: 1 0 auto;
+    position: relative;
+    min-height: 600px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding-bottom: 80px; /* Add padding to make room for pagination */
+}
+
+.gallery-container.loaded {
+    opacity: 1;
+}
+
+.gallery-container .back-button {
+    display: inline-flex;
+    align-items: center;
+    color: var(--navy);
+    text-decoration: none;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+    align-self: flex-start;
+}
+
+.gallery-container .back-button i {
+    margin-right: 0.5rem;
+}
+
+.gallery-container .back-button:hover {
+    color: var(--navy);
+}
+
+.gallery-container .attempts-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--soft-gray);
+    margin-bottom: 2rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.gallery-container .attempt-tab {
+    padding: 0.75rem 1.5rem;
+    color: var(--navy);
+    font-family: 'Minion Pro Caption', sans-serif;
+    cursor: pointer;
+    position: relative;
+    text-align: center;
+}
+
+.gallery-container .attempt-tab .badge {
+    margin-left: 0.5rem;
+    background-color: var(--medium-gray);
+    font-weight: normal;
+}
+
+.gallery-container .attempt-tab.active {
+    font-weight: normal;
+}
+
+.gallery-container .attempt-tab.active:after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--navy);
+}
+
+.gallery-container .reservation-date {
+    font-family: 'Minion Pro Caption', sans-serif;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.gallery-container .view-controls {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    font-family: 'Minion Pro Caption', sans-serif;
+}
+
+.gallery-container .d-flex {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gallery-container .view-label {
+    margin-right: 0.5rem;
+    color: var(--medium-gray);
+}
+
+.gallery-container .view-toggle {
+    display: flex;
+    border: 1px solid var(--soft-gray);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.gallery-container .view-toggle-btn {
+    background: none;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    color: var(--medium-gray);
+}
+
+.gallery-container .view-toggle-btn.active {
+    background-color: var(--navy);
+    color: white;
+}
+
+.gallery-container .slider-container {
+    position: relative;
+    margin-bottom: 3rem;
+    width: 100%;
+    max-width: 1200px;
+    overflow: hidden;
+    padding: 20px 0;
+}
+
+.gallery-container .slider-track {
+    display: flex;
+    transition: transform 0.3s ease-in-out;
+    width: 100%;
+    padding: 10px 0;
+}
+
+.gallery-container .screenshot-item {
+    flex: 0 0 calc(20% - 1rem);  /* Show 5 items at a time */
+    margin: 0 0.5rem;
+    min-width: 200px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    background-color: #f7f7f7;
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.gallery-container .screenshot-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
+.gallery-container .screenshot-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 3px;
+    transition: filter 0.3s ease;
+    background-color: #f7f7f7;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.gallery-container .screenshot-item:hover .screenshot-image {
+    filter: brightness(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.gallery-container .slider-control {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s ease;
+    pointer-events: auto;
+}
+
+.gallery-container .slider-control:hover {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.gallery-container .slider-prev {
+    left: 10px;
+}
+
+.gallery-container .slider-next {
+    right: 10px;
+}
+
+.gallery-container .slider-control.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.gallery-container .attempt-tab.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.gallery-container .attempt-tab.disabled .badge {
+    background-color: #ccc;
+}
+
+    /* Style 4: Small caps with dot indicator */
+.gallery-container .status-badge-smallcaps {
+    font-family: 'Minion Pro Caption', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+}
+
+.gallery-container .status-indicator {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin-right: 0.5rem;
+    margin-left: 1.2rem;
+}
+
+.gallery-container .status-failed .status-badge-smallcaps {
+    color: var(--failed-color);
+}
+
+.gallery-container .status-failed .status-indicator {
+    background-color: var(--failed-color);
+}
+
+.gallery-container .status-executed .status-badge-smallcaps {
+    color: var(--executed-color);
+}
+
+.gallery-container .status-executed .status-indicator {
+    background-color: var(--executed-color);
+}
+
+.gallery-container .status-locked .status-badge-smallcaps {
+    color: var(--locked-color);
+}
+
+.gallery-container .status-locked .status-indicator {
+    background-color: var(--locked-color);
+}
+
+.gallery-container .grid-view {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+    width: 100%;
+    max-width: 1200px;
+    padding: 10px 0;
+    align-self: flex-start;
+    visibility: hidden;
+    min-height: 400px; /* Add minimum height to maintain consistent spacing */
+}
+
+.gallery-container .grid-view.visible {
+    visibility: visible;
+}
+
+.gallery-container .grid-view .screenshot-item {
+    width: 100%;
+    min-width: 200px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    background-color: #f7f7f7;
+    border-radius: 3px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    aspect-ratio: 16/9;
+}
+
+.gallery-container .grid-view .screenshot-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 2;
+}
+
+.gallery-container .grid-view .screenshot-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: filter 0.3s ease;
+    background-color: #f7f7f7;
+}
+
+.gallery-container .grid-view .screenshot-item:hover img {
+    filter: brightness(1.05);
+}
+
+.gallery-container .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 1200px;
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    right: 0;
+    padding: 1rem 0;
+    background-color: #f7f7f7;
+}
+
+.gallery-container .pagination-item {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0.25rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    color: #21345C;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: 'Futura Light', sans-serif;
+    transition: all 0.2s ease;
+}
+
+.gallery-container .pagination-item:hover:not(.active) {
+    background-color: #f7f7f7;
+    transform: translateY(-1px);
+}
+
+.gallery-container .pagination-item.active {
+    background-color: #21345C;
+    color: white;
+    border-color: #21345C;
+    cursor: default;
+}
+
+@media (max-width: 1200px) {
+    .gallery-container .grid-view {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 992px) {
+    .gallery-container .grid-view {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .gallery-container .status-badge-smallcaps {
+        font-size: 0.8rem;
+    }
+    
+    .gallery-container .status-indicator {
+        width: 0.45rem;
+        height: 0.45rem;
+        margin-right: 0.4rem;
+        margin-left: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .gallery-container .grid-view {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .gallery-container .status-badge-smallcaps {
+        font-size: 0.75rem;
+    }
+    
+    .gallery-container .status-indicator {
+        width: 0.4rem;
+        height: 0.4rem;
+        margin-right: 0.3rem;
+        margin-left: 0.8rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .gallery-container .grid-view {
+        grid-template-columns: repeat(1, 1fr);
+    }
+    
+    .gallery-container .status-badge-smallcaps {
+        font-size: 0.7rem;
+    }
+    
+    .gallery-container .status-indicator {
+        width: 0.35rem;
+        height: 0.35rem;
+        margin-right: 0.25rem;
+        margin-left: 0.6rem;
+    }
+}
+
+/* Screenshot Preview Styles */
+.screenshot-preview-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: background-color 0.3s ease, opacity 0.3s ease;
+}
+
+.screenshot-preview-overlay.active {
+    background-color: rgba(0, 0, 0, 0.9);
+    opacity: 1;
+}
+
+.screenshot-preview-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90vh;
+    margin: auto;
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.screenshot-preview-overlay.active .screenshot-preview-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    display: block;
+    margin: auto;
+    opacity: 0;
+    transform: scale(0.98);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.screenshot-preview-overlay.active .preview-image {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.preview-close-btn {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 10px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    opacity: 0;
+}
+
+.screenshot-preview-overlay.active .preview-close-btn {
+    opacity: 1;
+}
+
+.preview-close-btn:hover {
+    transform: scale(1.2);
+}
+
+.preview-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) scale(0.9);
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 24px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    opacity: 0;
+}
+
+.screenshot-preview-overlay.active .preview-nav-btn {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+}
+
+.preview-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.preview-prev {
+    left: -80px;
+}
+
+.preview-next {
+    right: -80px;
+}
+
+@media (max-width: 768px) {
+    .preview-close-btn {
+        top: -40px;
+        right: 0;
+    }
+
+    .preview-nav-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+    }
+
+    .preview-prev {
+        left: 10px;
+    }
+
+    .preview-next {
+        right: 10px;
+    }
+}
+
+ /* Chat widget styles */
+ .chat-widget-button {
+    position: fixed !important;  
+    bottom: 0.6rem;
+    right: 0.6rem;

@@ -292,5 +292,36 @@ def cancel_reservation():
             'message': str(e)
         }), 500
 
+@app.route('/gallery')
+def gallery():
+    date = request.args.get('date')
+    time = request.args.get('time')
+    status = request.args.get('status', 'failed')  # Default to 'failed' if not provided
+    
+    # Get screenshots from blob storage
+    from automation.login import blob_service
+    screenshots = blob_service.get_screenshots(date, time)
+    
+    # Format date and time for display
+    formatted_date = datetime.strptime(date, '%Y-%m-%d').strftime('%B %d, %Y')
+    formatted_time = time
+    
+    return render_template('gallery.html', 
+                         date=formatted_date, 
+                         time=formatted_time, 
+                         screenshots=screenshots,
+                         status=status)
+
+@app.route('/blob-image/<path:blob_path>')
+def serve_blob_image(blob_path):
+    try:
+        from automation.login import blob_service
+        # Get blob data with cache headers
+        blob_data, headers = blob_service.get_blob_with_cache_headers(blob_path)
+        return blob_data, 200, headers
+    except Exception as e:
+        logging.error(f"Error serving blob image: {str(e)}")
+        return '', 404
+
 if __name__ == '__main__':
     app.run(port=8080, host='0.0.0.0', debug=True)

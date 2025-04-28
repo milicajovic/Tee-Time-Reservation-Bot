@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Details - Tee Time Caddie</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-content">
+            <!-- <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="header-logo"> -->
+            <div class="header-content-wrapper">
+                <a href="https://capitalcityclub.org" target="_blank">
+                    <img src="{{ url_for('static', filename='images/ccc_logo.png') }}" alt="CCC Logo" class="header-ccc-logo">
+                </a>
+                <div class="header-title">Tee Time Caddie</div>
+            </div>
+        </div>
+    </header>
+    <div class="gallery-container">
+        <!-- Back Button -->
+        <a href="javascript:history.back()" class="back-button">
+            <i class="fas fa-chevron-left"></i> Back
+        </a>
+        
+        <!-- Attempts Tabs -->
+        <div class="attempts-tabs">
+            {% set attempt_numbers = ['Attempt_1', 'Attempt_2', 'Attempt_3'] %}
+            {% set attempt_display_names = {
+                'Attempt_1': 'First Attempt',
+                'Attempt_2': 'Second Attempt',
+                'Attempt_3': 'Third Attempt'
+            } %}
+            {% for attempt_num in attempt_numbers %}
+                <div class="attempt-tab {% if loop.first and screenshots[attempt_num] %}active{% endif %} {% if not screenshots[attempt_num] %}disabled{% endif %}" 
+                     data-attempt="{{ attempt_num }}"
+                     {% if not screenshots[attempt_num] %}disabled{% endif %}>
+                    {{ attempt_display_names[attempt_num] }} <span class="badge">{{ screenshots[attempt_num]|length if screenshots[attempt_num] else 0 }}</span>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Reservation Date and Status -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="reservation-date">
+                {{ date }} at {{ time }}
+                <span class="status-badge status-{{ status }}">
+                    <span class="status-badge-smallcaps">
+                        <span class="status-indicator"></span>{{ status|title }}
+                    </span>
+                </span>
+            </div>
+            
+            <div class="view-controls">
+                <span class="view-label">View:</span>
+                <div class="view-toggle">
+                    <button class="view-toggle-btn active">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-toggle-btn">
+                        <i class="fas fa-film"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Slider View -->
+        {% for attempt, attempt_screenshots in screenshots.items() %}
+        <div class="slider-container" data-attempt="{{ attempt }}" style="display: none;">
+            <button class="slider-control slider-prev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <div class="slider-track">
+                {% for screenshot in attempt_screenshots %}
+                <div class="screenshot-item">
+                    <img src="{{ screenshot.url }}" alt="Screenshot" class="screenshot-image">
+                </div>
+                {% endfor %}
+            </div>
+            <button class="slider-control slider-next">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        {% endfor %}
+        
+        <!-- Grid View -->
+        {% for attempt, attempt_screenshots in screenshots.items() %}
+        <div class="grid-view" id="grid-view-{{ attempt }}" data-attempt="{{ attempt }}" {% if loop.first %}style="display: grid;"{% else %}style="display: none;"{% endif %}>
+            {% for screenshot in attempt_screenshots %}
+            <div class="screenshot-item">
+                <img src="{{ screenshot.url }}" alt="Screenshot" class="screenshot-image">
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        
+        <!-- Pagination -->
+        <div class="pagination" style="display: none;">
+            <a href="#" class="pagination-item">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            <a href="#" class="pagination-item active">1</a>
+            <a href="#" class="pagination-item">2</a>
+            <a href="#" class="pagination-item">3</a>
+            <a href="#" class="pagination-item">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+        <!-- Screenshot Preview Overlay -->
+        <div class="screenshot-preview-overlay">
+            <div class="screenshot-preview-content">
+                <button class="preview-close-btn">
+                    <i class="fas fa-times"></i>
+                </button>
+                <img src="" alt="Screenshot Preview" class="preview-image">
+                <button class="preview-nav-btn preview-prev">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="preview-nav-btn preview-next">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <footer class="main-footer">
+        <div class="footer-content">
+            <h1 id="timezoneDisplay"></h1>
+            <p>Copyright © 2025 Tee Time Caddie</p>
+        </div>
+    </footer>
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/timezone.js') }}"></script>
+</body>
+</html>

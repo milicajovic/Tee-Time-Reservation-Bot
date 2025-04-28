@@ -4,6 +4,8 @@ let currentMonth;
 let selectedDate = null;
 let selectedTime = null;
 let selectedTimeRange = '0';  // Default to '0' (Exact)
+let currentPanel = 0;
+let panels = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     // Get current date
@@ -76,11 +78,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const dayElement = document.createElement('div');
             dayElement.className = 'calendar-day';
             
-            // Check if the date is in the past
+            // Check if the date is in the past (excluding current day)
             const currentDate = new Date();
             const currentDay = new Date(currentYear, currentMonth, day);
             
-            if (currentDay < currentDate) {
+            // Only disable if the date is before today (not including today)
+            if (currentDay < new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())) {
                 dayElement.classList.add('disabled');
             }
             
@@ -98,6 +101,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Store selected date
                     selectedDate = new Date(currentYear, currentMonth, day);
+                    // RESET to the first page of slots whenever the date changes
+                    currentPanel = 0;
+                    // Update time slots based on the selected date
+                    updateTimeSlots();
                 }
             });
             
@@ -150,7 +157,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function generateTimeSlots() {
     const slots = [];
     let hour = 8;
-    let minute = 36;
+    let minute = 0;
+    
+    // Check if the selected date is a Monday
+    const isMonday = selectedDate && selectedDate.getDay() === 1;
+    
+    // If it's Monday, start from 8:36 AM
+    if (isMonday) {
+        hour = 8;
+        minute = 36;
+    }
     
     while (hour < 19 || (hour === 19 && minute === 0)) { // Until exactly 19:00
         const period = hour >= 12 ? 'PM' : 'AM';
@@ -177,24 +193,31 @@ function setupTimeSlots() {
     const cancelBtn = document.querySelector('.cancel-btn');
     const confirmBtn = document.querySelector('.modal-footer .confirm-btn');
     const bookNowBtn = document.querySelector('.book-button');
-    let currentPanel = 0;
     let selectedTime = null;
-    let selectedDate = null;
-    
-    // Generate all time slots
-    const allTimeSlots = generateTimeSlots();
-    
-    // Split time slots into panels
-    const panels = [
-        allTimeSlots.slice(0, 18),  // Panel 1: 8:36 AM - 12:00 PM
-        allTimeSlots.slice(18, 36), // Panel 2: 12:12 PM - 3:48 PM
-        allTimeSlots.slice(36, 53)  // Panel 3: 4:00 PM - 7:00 PM (17 slots)
-    ];
     
     // Function to update time slots display
     function updateTimeSlots() {
+            
+        const timeSlotsContainer = document.querySelector('.time-slots');
         timeSlotsContainer.innerHTML = '';
-        
+
+        // 1) regenerate all slots
+        const allTimeSlots = generateTimeSlots();
+
+        // 2) build panels in chunks of N
+        const slotsPerPanel = 18;
+        panels = [];
+        for (let i = 0; i < allTimeSlots.length; i += slotsPerPanel) {
+            panels.push(allTimeSlots.slice(i, i + slotsPerPanel));
+        }
+
+        // 3) drop any empty panels just in case
+        panels = panels.filter(panel => panel.length > 0);
+
+        // 4) if the user was on a now-nonexistent panel, clamp back to last
+        if (currentPanel >= panels.length) {
+            currentPanel = panels.length - 1;
+        }
         panels[currentPanel].forEach(time => {
             const slot = document.createElement('div');
             slot.className = 'time-slot';
@@ -465,6 +488,9 @@ function setupTimeSlots() {
     
     // Initialize time slots
     updateTimeSlots();
+    
+    // Make updateTimeSlots available globally
+    window.updateTimeSlots = updateTimeSlots;
 }
 
 // Call the setup function when the document is loaded
@@ -493,7 +519,10 @@ function displayAtlantaTimezone() {
     const displayString = `Timezone: ${longTZName} (${shortOffset})`;
   
     // Show it in the page
-    document.getElementById('timezoneDisplay').textContent = displayString;
+    const timezoneDisplay = document.getElementById('timezoneDisplay');
+    if (timezoneDisplay) {
+        timezoneDisplay.textContent = displayString;
+    }
 }
 
 // Function to format date from YYYY-MM-DD to Month DDth, YYYY
@@ -561,7 +590,11 @@ function createReservationRow(reservation) {
     const externalLinkImg = row.querySelector('.external-link-icon');
     if (shouldShowEnabledLink && reservation.screenshot_folder_url) {
         externalLinkImg.addEventListener('click', function() {
-            window.open(reservation.screenshot_folder_url, '_blank');
+            // Extract date and time from the reservation
+            const date = reservation.date;
+            const time = reservation.time;
+            // Navigate to gallery.html with parameters
+            window.location.href = `/gallery?date=${date}&time=${encodeURIComponent(time)}&status=${reservation.status}`;
         });
     }
     
