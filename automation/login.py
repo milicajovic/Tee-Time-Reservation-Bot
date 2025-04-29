@@ -898,12 +898,12 @@ def handle_logout(sb, max_attempts=3):
 def send_email(reservation_date, reservation_time, success=True):
     sender_email = os.getenv('SENDER_EMAIL')
     app_password = os.getenv('APP_PASSWORD')     
-    receiver_email = os.getenv('RECEIVER_EMAIL')
+    receiver_emails = os.getenv('RECEIVER_EMAIL').split(',')  # Split by comma to get list of emails
  
     msg = MIMEMultipart()
     msg['Subject'] = "⛳ Reservation Status Update"
     msg['From'] = sender_email
-    msg['To'] = receiver_email
+    msg['To'] = ', '.join(receiver_emails)  # Join emails with commas for display
     
     if success:
         html = f"""<html>
@@ -931,7 +931,7 @@ def send_email(reservation_date, reservation_time, success=True):
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(sender_email, app_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
+            server.sendmail(sender_email, receiver_emails, msg.as_string())  # Send to all recipients
         logging.info("Email sent successfully!")
     except Exception as e:
         logging.error(f"Error sending email: {e}")
