@@ -508,8 +508,14 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
                 time_slot_selector = f"div.time_slot:contains('{desired_time}'), a.teetime_button:contains('{desired_time}')"
                 time_slot_element = sb.find_element(time_slot_selector)
                 if time_slot_element:
-                    # Scroll the element into view
-                    sb.driver.execute_script("arguments[0].scrollIntoView(true);", time_slot_element)
+                    # Get the element's position and size
+                    element_rect = time_slot_element.rect
+                    # Get the viewport height
+                    viewport_height = sb.driver.execute_script("return window.innerHeight")
+                    # Calculate the scroll position to center the element
+                    scroll_position = element_rect['y'] - (viewport_height / 2) + (element_rect['height'] / 2)
+                    # Scroll to center the element
+                    sb.driver.execute_script(f"window.scrollTo(0, {scroll_position});")
                     time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             except Exception as scroll_error:
                 print(f"Could not scroll to time slot: {str(scroll_error)}")
