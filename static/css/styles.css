@@ -16,7 +16,7 @@
 }
 
 @font-face {
-    font-family: 'Minion Pro Caption';
+    font-family: 'Minion Pro Caption'; 
     src: url('../fonts/Minion-Pro-Caption.otf') format('opentype');
     font-weight: normal;
     font-style: normal;
@@ -199,6 +199,11 @@ body {
     justify-content: space-between;
     z-index: 1;
     padding-bottom: 15px;
+}
+
+.calendar-nav:hover {    
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
 }
 
 .calendar-nav span {
@@ -986,7 +991,7 @@ body {
 .view-nav-btn {
     background: none;
     border: none;
-    color: #333;
+    color: #555;
     font-family: 'Futura Light', sans-serif;
     font-size: 14px;
     cursor: pointer;
@@ -1004,7 +1009,8 @@ body {
 }
 
 .view-nav-btn:hover {
-    color: #001f3f;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
 }
 
 .view-nav-btn:active {
@@ -1118,16 +1124,8 @@ body {
 .reservation-date {
     flex: 1;
     font-size: 16px;
-    color: #333;
+    color: #555;
     text-align: left;
-}
-
-.reservation-header .reservation-status {
-    flex: 1;
-    text-align: center;
-    color: #333;
-    display: flex;
-    justify-content: center;
 }
 
 .reservation-action {
@@ -1289,7 +1287,7 @@ body {
 .gallery-container .back-button {
     display: inline-flex;
     align-items: center;
-    color: var(--navy);
+    color: #555;
     text-decoration: none;
     font-size: 1rem;
     margin-bottom: 0.2rem;
@@ -1301,7 +1299,8 @@ body {
 }
 
 .gallery-container .back-button:hover {
-    color: var(--navy);
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
 }
 
 .gallery-container .attempts-tabs {
@@ -1314,7 +1313,7 @@ body {
 
 .gallery-container .attempt-tab {
     padding: 0.75rem 1.5rem;
-    color: var(--navy);
+    color: var(--navy);        
     font-family: 'Minion Pro Caption', sans-serif;
     cursor: pointer;
     position: relative;
@@ -1341,20 +1340,6 @@ body {
     background-color: var(--navy);
 }
 
-.gallery-container .reservation-date {
-    font-family: 'Minion Pro Caption', sans-serif;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-}
-
-.gallery-container .view-controls {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-    font-family: 'Minion Pro Caption', sans-serif;
-}
-
 .gallery-container .d-flex {
     width: 100%;
     max-width: 1200px;
@@ -1362,6 +1347,37 @@ body {
     padding: 0 10px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    min-height: 40px;
+}
+
+.gallery-container .reservation-date {
+    font-family: 'Futura Light', sans-serif;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    line-height: 40px; /* Match the height of view-controls */
+    margin: 0; /* Remove margin to prevent offset */
+}
+
+.gallery-container .view-controls {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    height: 40px;
+}
+
+.gallery-container .view-toggle {
+    display: flex;
+    border: 1px solid var(--soft-gray);
+    border-radius: 4px;
+    overflow: hidden;
+    height: 100%;
+}
+
+.gallery-container .view-toggle-btn {
+    height: 100%;
+    display: flex;
     align-items: center;
 }
 
@@ -1492,7 +1508,7 @@ body {
 
     /* Style 4: Small caps with dot indicator */
 .gallery-container .status-badge-smallcaps {
-    font-family: 'Minion Pro Caption', sans-serif;
+    font-family: 'Futura Light';
     font-size: 0.85rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -1534,14 +1550,16 @@ body {
 .gallery-container .grid-view {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 1rem;
+    grid-auto-rows: min-content;
+    column-gap: 0.5rem;
+    row-gap: 1rem;
     margin-bottom: 2rem;
     width: 100%;
     max-width: 1200px;
-    padding: 10px 0;
+    padding: 0;
     align-self: flex-start;
     visibility: hidden;
-    min-height: 400px; /* Add minimum height to maintain consistent spacing */
+    min-height: 400px;
 }
 
 .gallery-container .grid-view.visible {
@@ -1561,6 +1579,8 @@ body {
     justify-content: center;
     position: relative;
     aspect-ratio: 16/9;
+    margin-top: 1rem; /* Add small top margin */
+    padding: 0;
 }
 
 .gallery-container .grid-view .screenshot-item:hover {
@@ -1575,6 +1595,8 @@ body {
     object-fit: contain;
     transition: filter 0.3s ease;
     background-color: #f7f7f7;
+    margin: 0;
+    padding: 0;
 }
 
 .gallery-container .grid-view .screenshot-item:hover img {
@@ -1614,7 +1636,14 @@ body {
 
 .gallery-container .pagination-item:hover:not(.active) {
     background-color: #f7f7f7;
-    transform: translateY(-1px);
+    color: #091c3e;
+    border: 1px solid #091c3e;
+    text-decoration: underline;
+}
+
+/* Remove underline from pagination items that contain icons */
+.gallery-container .pagination-item:has(i):hover:not(.active) {
+    text-decoration: none;
 }
 
 .gallery-container .pagination-item.active {
@@ -1627,12 +1656,14 @@ body {
 @media (max-width: 1200px) {
     .gallery-container .grid-view {
         grid-template-columns: repeat(4, 1fr);
+        margin-bottom: 3rem;
     }
 }
 
 @media (max-width: 992px) {
     .gallery-container .grid-view {
         grid-template-columns: repeat(3, 1fr);
+        margin-bottom: 3.5rem;
     }
     
     .gallery-container .status-badge-smallcaps {
@@ -1650,6 +1681,7 @@ body {
 @media (max-width: 768px) {
     .gallery-container .grid-view {
         grid-template-columns: repeat(2, 1fr);
+        margin-bottom: 4rem;
     }
     
     .gallery-container .status-badge-smallcaps {
@@ -1667,6 +1699,7 @@ body {
 @media (max-width: 576px) {
     .gallery-container .grid-view {
         grid-template-columns: repeat(1, 1fr);
+        margin-bottom: 4.5rem;
     }
     
     .gallery-container .status-badge-smallcaps {
