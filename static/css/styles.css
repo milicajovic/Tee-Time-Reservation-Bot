@@ -78,12 +78,14 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    width: 100%;
 }
 
 .header-content-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
+    position: relative;
 }
 
 .header-title {
@@ -100,6 +102,40 @@ body {
     height: 120px;
     width: auto;
     margin-top: 10px;
+}
+
+.header-tutorial-link {
+    position: fixed;
+    left: 40px;
+    top: 20px;
+    font-family: 'Futura Light', sans-serif;
+    color: #091c3e;
+    text-decoration: none;
+    font-size: 16px;
+    transition: font-weight 0.3s ease;
+    text-transform: uppercase;
+    z-index: 10;
+}
+
+.header-tutorial-link:hover {
+    font-weight: bold;
+}
+
+.header-tutorial-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background-color: #091c3e;
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+    transform-origin: left;
+}
+
+.header-tutorial-link:hover::after {
+    transform: scaleX(1);
 }
 
 .container {
@@ -499,6 +535,10 @@ body {
     .calendar-header {
         padding: 0px 15px 15px 15px;
     }
+
+    .header-tutorial-link {
+        left: 30px;
+    }
 }
 
 @media (max-width: 992px) {
@@ -525,6 +565,11 @@ body {
     
     .book-button {
         margin: 15px auto 30px;
+    }
+
+    .header-tutorial-link {
+        left: 20px;
+        font-size: 14px;
     }
 }
 
@@ -698,6 +743,11 @@ body {
     .section-divider {
         margin-top: 20px;
     }
+
+    .header-tutorial-link {
+        left: 20px;
+        font-size: 14px;
+    }
 }
 
 @media (max-width: 576px) {
@@ -815,6 +865,11 @@ body {
 
     .calendar-weekdays {
         font-size: 16px;
+    }
+
+    .header-tutorial-link {
+        left: 15px;
+        font-size: 12px;
     }
 }
 
