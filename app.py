@@ -91,56 +91,57 @@ def submit():
             'message': str(e)
         }), 500
 
-def calculate_utc_activation_time2(user_date: str, user_time: str) -> str:
-    """
-    Test version of calculate_utc_activation_time that schedules the booking 2 minutes from now.
-    Returns an ISO 8601 formatted string in UTC.
-    """
-    # Get current time in ET
-    et_tz = pytz.timezone("America/New_York")
-    now_et = datetime.now(et_tz)
-    
-    # Add 2 minutes to current time
-    activation_et = now_et + timedelta(minutes=1)
-    
-    # Convert to UTC
-    activation_utc = activation_et.astimezone(pytz.utc)
-    return activation_utc.isoformat()
-
-# def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
+# Just for testing
+# def calculate_utc_activation_time2(user_date: str, user_time: str) -> str:
 #     """
-#     Calculates utc_activation_time based on user input in Eastern Time (ET).
-#     Uses the following rules for advancement:
-#         Sunday: 3 days,
-#         Monday: 3 days,
-#         Tuesday: 4 days,
-#         Wednesday: 5 days,
-#         Thursday: 6 days,
-#         Friday: 3 days,
-#         Saturday: 3 days.
-#     The activation time in ET is set to 07:30:00, then converted to UTC.
-#     Returns an ISO 8601 formatted string.
+#     Test version of calculate_utc_activation_time that schedules the booking 2 minutes from now.
+#     Returns an ISO 8601 formatted string in UTC.
 #     """
+#     # Get current time in ET
 #     et_tz = pytz.timezone("America/New_York")
-#     dt_str = f"{user_date} {user_time}"
-#     desired_dt = datetime.strptime(dt_str, "%Y-%m-%d %I:%M %p")
-#     desired_et = et_tz.localize(desired_dt)
+#     now_et = datetime.now(et_tz)
     
-#     days_advance = {
-#         6: 3,  # Sunday
-#         0: 3,  # Monday
-#         1: 4,  # Tuesday
-#         2: 5,  # Wednesday
-#         3: 6,  # Thursday
-#         4: 3,  # Friday
-#         5: 3   # Saturday
-#     }
-#     advance_days = days_advance.get(desired_et.weekday(), 3)
+#     # Add 2 minutes to current time
+#     activation_et = now_et + timedelta(minutes=1)
     
-#     activation_et = desired_et - timedelta(days=advance_days)
-#     activation_et = activation_et.replace(hour=7, minute=30, second=0, microsecond=0)
+#     # Convert to UTC
 #     activation_utc = activation_et.astimezone(pytz.utc)
 #     return activation_utc.isoformat()
+
+def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
+    """
+    Calculates utc_activation_time based on user input in Eastern Time (ET).
+    Uses the following rules for advancement:
+        Sunday: 3 days,
+        Monday: 3 days,
+        Tuesday: 4 days,
+        Wednesday: 5 days,
+        Thursday: 6 days,
+        Friday: 3 days,
+        Saturday: 3 days.
+    The activation time in ET is set to 07:30:00, then converted to UTC.
+    Returns an ISO 8601 formatted string.
+    """
+    et_tz = pytz.timezone("America/New_York")
+    dt_str = f"{user_date} {user_time}"
+    desired_dt = datetime.strptime(dt_str, "%Y-%m-%d %I:%M %p")
+    desired_et = et_tz.localize(desired_dt)
+    
+    days_advance = {
+        6: 3,  # Sunday
+        0: 3,  # Monday
+        1: 4,  # Tuesday
+        2: 5,  # Wednesday
+        3: 6,  # Thursday
+        4: 3,  # Friday
+        5: 3   # Saturday
+    }
+    advance_days = days_advance.get(desired_et.weekday(), 3)
+    
+    activation_et = desired_et - timedelta(days=advance_days)
+    activation_et = activation_et.replace(hour=7, minute=30, second=0, microsecond=0)
+    activation_utc = activation_et.astimezone(pytz.utc)
+    return activation_utc.isoformat()
 
 
 # New route to process pending reservations, similar to your scheduler.py logic.
