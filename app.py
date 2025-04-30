@@ -50,7 +50,7 @@ def submit():
         logging.info(f"Received reservation request - Date: {date}, Time: {time}, Time Slot Range: {time_slot_range}")
 
         # Calculate utc_activation_time based on the date and time
-        raw_iso = calculate_utc_activation_time2(date, time)
+        raw_iso = calculate_utc_activation_time(date, time)
         utc_activation_time = datetime.fromisoformat(raw_iso)   # handles the "+00:00" offset too
         # Prepare a unique RowKey that starts with the activation time (ISO 8601) for proper sorting,
         # appended with a UUID for uniqueness in case of duplicate activation times.
