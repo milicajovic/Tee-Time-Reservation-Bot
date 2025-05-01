@@ -875,7 +875,7 @@ def handle_logout(sb, max_attempts=3):
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                 
                 # Verify logout
-                if "login" in sb.get_current_url():
+                if "home" in sb.get_current_url():  # or "capitalcityclub.org/web/pages/home"
                     take_screenshot(sb, "logout_successful")
                     return True
             else:
