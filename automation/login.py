@@ -493,6 +493,10 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
             sb.driver.execute_script("arguments[0].scrollIntoView(true);", selected_slot[2])
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             
+            # Take screenshot of available time slots around selected time
+            take_screenshot(sb, "available_time_slots_around_selected")
+            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            
             # Click the time button using JavaScript to avoid element interception
             sb.driver.execute_script("arguments[0].click();", selected_slot[1])
             take_screenshot(sb, "after_time_selection")
