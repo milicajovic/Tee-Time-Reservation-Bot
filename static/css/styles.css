@@ -1362,7 +1362,7 @@ body {
 .gallery-container .attempts-tabs {
     display: flex;
     border-bottom: 1px solid var(--soft-gray);
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     width: 100%;
     justify-content: center;
     position: relative;
