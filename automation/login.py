@@ -915,7 +915,7 @@ def send_email(reservation_date, reservation_time, success=True):
             <p>Your tee time has been booked.</p>
             <p>Date: {reservation_date}<br>
                Time: {reservation_time}</p>
-            <p>View the reservation details and screenshots: <a href="{gallery_link}">Click here</a></p>
+            <p>To view the reservation details and screenshots, please <a href="{gallery_link}">click here</a>.</p>
             <p>Thank you for using our service!</p>
         </body>
         </html>"""
@@ -924,8 +924,8 @@ def send_email(reservation_date, reservation_time, success=True):
         <body>
             <h3 style="color:#8b0000;">Reservation Failed</h3>
             <p>We were unable to book your tee time.</p>
-            <p>View the attempt details and screenshots: <a href="{gallery_link}">Click here</a></p>
-            <p>Please try again later or contact support if the issue persists.</p>
+            <p>To view the attempt details and screenshots, please <a href="{gallery_link}">click here</a>.</p>
+            <p>Please contact support if the issue persists.</p>
             <p>We apologize for any inconvenience.</p>
         </body>
         </html>"""
