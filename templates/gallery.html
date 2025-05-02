@@ -49,11 +49,13 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div class="reservation-date">
                 {{ date }} at {{ time }}
-                <span class="status-badge status-{{ status }}">
-                    <span class="status-badge-smallcaps">
-                        <span class="status-indicator"></span>{{ status|title }}
+                {% if status %}
+                    <span class="status-badge status-{{ status }}">
+                        <span class="status-badge-smallcaps">
+                            <span class="status-indicator"></span>{{ status|title }}
+                        </span>
                     </span>
-                </span>
+                {% endif %}
             </div>
             
             <div class="view-controls">

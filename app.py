@@ -310,7 +310,7 @@ def weather():
 def gallery():
     date = request.args.get('date')
     time = request.args.get('time')
-    status = request.args.get('status', 'failed')  # Default to 'failed' if not provided
+    status = request.args.get('status') 
     
     # Get screenshots from blob storage
     from automation.login import blob_service
@@ -319,6 +319,9 @@ def gallery():
     # Format date and time for display
     formatted_date = datetime.strptime(date, '%Y-%m-%d').strftime('%B %d, %Y')
     formatted_time = time
+
+    if not status:
+        status = get_reservation_status(date, time)
     
     return render_template('gallery.html', 
                          date=formatted_date, 
@@ -336,6 +339,16 @@ def serve_blob_image(blob_path):
     except Exception as e:
         logging.error(f"Error serving blob image: {str(e)}")
         return '', 404
-
+    
+def get_reservation_status(date, time):
+    table_client = get_table_client()
+    row_key = f"{date}_{time}"
+    try:
+        entity = table_client.get_entity(partition_key="reservations", row_key=row_key)
+        return entity.get('status', 'failed')
+    except Exception as e:
+        # Log the error if needed
+        return None
+    
 if __name__ == '__main__':
     app.run(port=8080, host='0.0.0.0', debug=True)
