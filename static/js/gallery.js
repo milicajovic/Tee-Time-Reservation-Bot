@@ -324,3 +324,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+const backButton = document.querySelector('.back-button');
+if (backButton) {
+    backButton.addEventListener('click', function(event) {
+        event.preventDefault();
+        // Check if the referrer is from your own site
+        const referrer = document.referrer;
+        const isInternal = referrer && referrer.includes(window.location.hostname);
+        if (isInternal) {
+            window.history.back();
+        } else {
+            window.location.href = '/'; // Or '/?tab=2' for your second tab
+        }
+    });
+}
