@@ -58,8 +58,22 @@
                 {% endif %}
             </div>
             
-            <div class="view-controls">
-                <span class="view-label">Items per page:</span>
+            <div class="items-per-page-controls">
+                <span class="items-per-page-label">Items per page:</span>
+                <div class="items-per-page-dropdown">
+                    <button class="items-per-page-button">
+                        <span class="selected-value">10</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="items-per-page-options">
+                        <div class="items-per-page-option" data-value="all">All</div>
+                        <div class="items-per-page-option" data-value="10">10</div>
+                        <div class="items-per-page-option" data-value="20">20</div>
+                        <div class="items-per-page-option" data-value="30">30</div>
+                        <div class="items-per-page-option" data-value="40">40</div>
+                        <div class="items-per-page-option" data-value="50">50</div>
+                    </div>
+                </div>
             </div>
         </div>
         

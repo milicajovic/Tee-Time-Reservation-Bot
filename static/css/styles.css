@@ -1471,20 +1471,92 @@ body {
     margin-bottom: 1.5rem;
     display: flex;
     align-items: center;
-    line-height: 40px; /* Match the height of view-controls */
+    line-height: 40px; /* Match the height of items-per-page-controls */
     margin: 0; /* Remove margin to prevent offset */
 }
 
-.gallery-container .view-controls {
+.gallery-container .items-per-page-controls {
     display: flex;
     align-items: center;
     margin-left: auto;
     height: 40px;
 }
 
-.gallery-container .view-label {
+.gallery-container .items-per-page-label {
     margin-right: 0.5rem;
-    color: var(--medium-gray);
+}
+
+.gallery-container .items-per-page-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.gallery-container .items-per-page-button {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Futura Light', sans-serif;
+    color: #21345C;
+    transition: all 0.2s ease;
+}
+
+.gallery-container .items-per-page-button:hover {
+    background-color: #f7f7f7;
+    border-color: #091c3e;
+}
+
+.gallery-container .items-per-page-button .selected-value {
+    min-width: 30px;
+    text-align: left;
+}
+
+.gallery-container .items-per-page-button i {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.gallery-container .items-per-page-dropdown.active .items-per-page-button i {
+    transform: rotate(180deg);
+}
+
+.gallery-container .items-per-page-options {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    margin-top: 4px;
+    display: none;
+    min-width: 100%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.gallery-container .items-per-page-dropdown.active .items-per-page-options {
+    display: block;
+}
+
+.gallery-container .items-per-page-option {
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: 'Futura Light', sans-serif;
+    color: #21345C;
+}
+
+.gallery-container .items-per-page-option:hover {
+    background-color: #f7f7f7;
+}
+
+.gallery-container .items-per-page-option.selected {
+    background-color: #f7f7f7;
+    color: #091c3e;
 }
 
 .gallery-container .grid-view {

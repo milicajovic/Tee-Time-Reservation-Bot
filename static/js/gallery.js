@@ -4,6 +4,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const gridViews = document.querySelectorAll('.grid-view');
     const pagination = document.querySelector('.pagination');
     const galleryContainer = document.querySelector('.gallery-container');
+    
+    // Items per page functionality
+    const itemsPerPageDropdown = document.querySelector('.items-per-page-dropdown');
+    const itemsPerPageButton = document.querySelector('.items-per-page-button');
+    const itemsPerPageOptions = document.querySelector('.items-per-page-options');
+    const selectedValue = document.querySelector('.selected-value');
+    let currentItemsPerPage = 10;
+    
+    // Toggle dropdown
+    itemsPerPageButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        itemsPerPageDropdown.classList.toggle('active');
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', () => {
+        itemsPerPageDropdown.classList.remove('active');
+    });
+    
+    // Handle option selection
+    itemsPerPageOptions.addEventListener('click', (e) => {
+        const option = e.target.closest('.items-per-page-option');
+        if (!option) return;
+        
+        const value = option.dataset.value;
+        currentItemsPerPage = value === 'all' ? Infinity : parseInt(value);
+        selectedValue.textContent = value === 'all' ? 'All' : value;
+        
+        // Update selected state
+        itemsPerPageOptions.querySelectorAll('.items-per-page-option').forEach(opt => {
+            opt.classList.toggle('selected', opt === option);
+        });
+        
+        // Update pagination with new items per page
+        const activeTab = document.querySelector('.attempt-tab.active');
+        if (activeTab) {
+            updatePagination(activeTab.dataset.attempt);
+        }
+        
+        itemsPerPageDropdown.classList.remove('active');
+    });
+    
     // Screenshot Preview functionality
     const previewOverlay = document.querySelector('.screenshot-preview-overlay');
     const previewImage = document.querySelector('.preview-image');
@@ -59,14 +101,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const screenshots = gridView.querySelectorAll('.screenshot-item');
         const totalScreenshots = screenshots.length;
-        const screenshotsPerPage = 10;
-        const totalPages = Math.ceil(totalScreenshots / screenshotsPerPage);
+        const totalPages = currentItemsPerPage === Infinity ? 1 : Math.ceil(totalScreenshots / currentItemsPerPage);
         
         // Clear existing pagination
         pagination.innerHTML = '';
         
-        // Always show pagination
-        pagination.style.display = 'flex';
+        // Show/hide pagination based on whether we're showing all items
+        pagination.style.display = currentItemsPerPage === Infinity ? 'none' : 'flex';
+        
+        if (currentItemsPerPage === Infinity) {
+            // Show all screenshots
+            screenshots.forEach(screenshot => {
+                screenshot.style.display = 'block';
+            });
+            return;
+        }
         
         // Add previous button
         const prevButton = document.createElement('a');
@@ -93,8 +142,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Function to show specific page
         function showPage(pageNum) {
-            const start = (pageNum - 1) * screenshotsPerPage;
-            const end = start + screenshotsPerPage;
+            const start = (pageNum - 1) * currentItemsPerPage;
+            const end = start + currentItemsPerPage;
             
             screenshots.forEach((screenshot, index) => {
                 screenshot.style.display = (index >= start && index < end) ? 'block' : 'none';
