@@ -904,6 +904,10 @@ def send_email(reservation_date, reservation_time, success=True):
     msg['From'] = sender_email
     msg['To'] = ', '.join(receiver_emails)  # Join emails with commas for display
     
+    # Construct the gallery link
+    base_url = os.getenv('BASE_URL')  # Get base URL from env or default to localhost
+    gallery_link = f"{base_url}/gallery?date={reservation_date}&time={reservation_time}"
+    
     if success:
         html = f"""<html>
         <body>
@@ -911,6 +915,7 @@ def send_email(reservation_date, reservation_time, success=True):
             <p>Your tee time has been booked.</p>
             <p>Date: {reservation_date}<br>
                Time: {reservation_time}</p>
+            <p>View the reservation details and screenshots: <a href="{gallery_link}">Click here</a></p>
             <p>Thank you for using our service!</p>
         </body>
         </html>"""
@@ -919,6 +924,7 @@ def send_email(reservation_date, reservation_time, success=True):
         <body>
             <h3 style="color:#8b0000;">Reservation Failed</h3>
             <p>We were unable to book your tee time.</p>
+            <p>View the attempt details and screenshots: <a href="{gallery_link}">Click here</a></p>
             <p>Please try again later or contact support if the issue persists.</p>
             <p>We apologize for any inconvenience.</p>
         </body>
