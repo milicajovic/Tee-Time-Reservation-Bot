@@ -1404,162 +1404,6 @@ body {
     font-weight: normal;
 }
 
-.gallery-container .d-flex {
-    width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    min-height: 40px;
-}
-
-.gallery-container .reservation-date {
-    font-family: 'Futura Light', sans-serif;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    line-height: 40px; /* Match the height of view-controls */
-    margin: 0; /* Remove margin to prevent offset */
-}
-
-.gallery-container .view-controls {
-    display: flex;
-    align-items: center;
-    margin-left: auto;
-    height: 40px;
-}
-
-.gallery-container .view-toggle {
-    display: flex;
-    border: 1px solid var(--soft-gray);
-    border-radius: 4px;
-    overflow: hidden;
-    height: 100%;
-}
-
-.gallery-container .view-toggle-btn {
-    height: 100%;
-    display: flex;
-    align-items: center;
-}
-
-.gallery-container .view-label {
-    margin-right: 0.5rem;
-    color: var(--medium-gray);
-}
-
-.gallery-container .view-toggle {
-    display: flex;
-    border: 1px solid var(--soft-gray);
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-.gallery-container .view-toggle-btn {
-    background: none;
-    border: none;
-    padding: 0.5rem 0.75rem;
-    cursor: pointer;
-    color: var(--medium-gray);
-}
-
-.gallery-container .view-toggle-btn.active {
-    background-color: var(--navy);
-    color: white;
-}
-
-.gallery-container .slider-container {
-    position: relative;
-    margin-bottom: 3rem;
-    width: 100%;
-    max-width: 1200px;
-    overflow: hidden;
-    padding: 20px 0;
-}
-
-.gallery-container .slider-track {
-    display: flex;
-    transition: transform 0.3s ease-in-out;
-    width: 100%;
-    padding: 10px 0;
-}
-
-.gallery-container .screenshot-item {
-    flex: 0 0 calc(20% - 1rem);  /* Show 5 items at a time */
-    margin: 0 0.5rem;
-    min-width: 200px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    cursor: pointer;
-    background-color: #f7f7f7;
-    border-radius: 3px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-}
-
-.gallery-container .screenshot-item:hover {
-    transform: scale(1.05);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    z-index: 2;
-}
-
-.gallery-container .screenshot-image {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    border-radius: 3px;
-    transition: filter 0.3s ease;
-    background-color: #f7f7f7;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.gallery-container .screenshot-item:hover .screenshot-image {
-    filter: brightness(1.05);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-}
-
-.gallery-container .slider-control {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 40px;
-    height: 40px;
-    background: rgba(0, 0, 0, 0.5);
-    border: none;
-    border-radius: 50%;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.3s ease;
-    pointer-events: auto;
-}
-
-.gallery-container .slider-control:hover {
-    background: rgba(0, 0, 0, 0.7);
-}
-
-.gallery-container .slider-prev {
-    left: 10px;
-}
-
-.gallery-container .slider-next {
-    right: 10px;
-}
-
-.gallery-container .slider-control.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
 .gallery-container .attempt-tab.disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -1570,7 +1414,7 @@ body {
     background-color: #ccc;
 }
 
-    /* Style 4: Small caps with dot indicator */
+/* Style 4: Small caps with dot indicator */
 .gallery-container .status-badge-smallcaps {
     font-family: 'Futura Light';
     font-size: 0.85rem;
@@ -1611,6 +1455,38 @@ body {
     background-color: var(--locked-color);
 }
 
+.gallery-container .d-flex {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 40px;
+}
+
+.gallery-container .reservation-date {
+    font-family: 'Futura Light', sans-serif;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    line-height: 40px; /* Match the height of view-controls */
+    margin: 0; /* Remove margin to prevent offset */
+}
+
+.gallery-container .view-controls {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    height: 40px;
+}
+
+.gallery-container .view-label {
+    margin-right: 0.5rem;
+    color: var(--medium-gray);
+}
+
 .gallery-container .grid-view {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
@@ -1622,12 +1498,8 @@ body {
     max-width: 1200px;
     padding: 0;
     align-self: flex-start;
-    visibility: hidden;
-    min-height: 400px;
-}
-
-.gallery-container .grid-view.visible {
     visibility: visible;
+    min-height: 400px;
 }
 
 .gallery-container .grid-view .screenshot-item {
@@ -1643,7 +1515,7 @@ body {
     justify-content: center;
     position: relative;
     aspect-ratio: 16/9;
-    margin-top: 1rem; /* Add small top margin */
+    margin-top: 1rem;
     padding: 0;
 }
 

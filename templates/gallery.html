@@ -59,36 +59,9 @@
             </div>
             
             <div class="view-controls">
-                <span class="view-label">View:</span>
-                <div class="view-toggle">
-                    <button class="view-toggle-btn active">
-                        <i class="fas fa-th"></i>
-                    </button>
-                    <button class="view-toggle-btn">
-                        <i class="fas fa-film"></i>
-                    </button>
-                </div>
+                <span class="view-label">Items per page:</span>
             </div>
         </div>
-        
-        <!-- Slider View -->
-        {% for attempt, attempt_screenshots in screenshots.items() %}
-        <div class="slider-container" data-attempt="{{ attempt }}" style="display: none;">
-            <button class="slider-control slider-prev">
-                <i class="fas fa-chevron-left"></i>
-            </button>
-            <div class="slider-track">
-                {% for screenshot in attempt_screenshots %}
-                <div class="screenshot-item">
-                    <img src="{{ screenshot.url }}" alt="Screenshot" class="screenshot-image">
-                </div>
-                {% endfor %}
-            </div>
-            <button class="slider-control slider-next">
-                <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
-        {% endfor %}
         
         <!-- Grid View -->
         {% for attempt, attempt_screenshots in screenshots.items() %}
