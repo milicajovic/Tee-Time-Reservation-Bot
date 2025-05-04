@@ -18,10 +18,12 @@
 </head>
 <body>
     <header class="main-header">
+        <div class="tutorial-link-container">
+            <a href="https://youtu.be/p3epxKDRbWw" target="_blank" class="header-tutorial-link">TUTORIAL</a>
+        </div>
         <div class="header-content">
             <!-- <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="header-logo"> -->
             <div class="header-content-wrapper">
-                <a href="https://youtu.be/p3epxKDRbWw" target="_blank" class="header-tutorial-link">TUTORIAL</a>
                 <a href="https://capitalcityclub.org" target="_blank">
                     <img src="{{ url_for('static', filename='images/ccc_logo.png') }}" alt="CCC Logo" class="header-ccc-logo">
                 </a>
@@ -67,18 +69,59 @@
                 </div>
             </div>
             
-            <div class="time-slots-container">
-                <div class="time-slots">
-                    <!-- Time slots will be generated here -->
             <div class="right-container">
+                <div class="time-picker-container">
+                    <div class="time-picker-controls">
+                        <div class="time-picker-field">
+                            <div class="time-picker-field-label">Hour</div>
+                            <div class="time-picker-selector" id="hour-selector">
+                                <div class="time-picker-nav" id="hour-prev">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                                <div class="time-picker-value" id="hour-value">8</div>
+                                <div class="time-picker-nav" id="hour-next">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="time-picker-field">
+                            <div class="time-picker-field-label">Minute</div>
+                            <div class="time-picker-selector" id="minute-selector">
+                                <div class="time-picker-nav" id="minute-prev">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                                <div class="time-picker-value" id="minute-value">00</div>
+                                <div class="time-picker-nav" id="minute-next">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="time-picker-field">
+                            <div class="time-picker-field-label">AM/PM</div>
+                            <div class="time-picker-selector" id="period-selector">
+                                <div class="time-picker-nav" id="period-prev">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                                <div class="time-picker-value" id="period-value">AM</div>
+                                <div class="time-picker-nav" id="period-next">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="time-navigation">
-                    <button class="time-nav-btn" disabled>
-                        <i class="fas fa-chevron-left"></i> Previous
-                    </button>
-                    <button class="time-nav-btn">
-                        Next <i class="fas fa-chevron-right"></i>
-                    </button>
+                
+                <div class="time-range-section">
+                    <div class="time-range-label">Time range</div>
+                    <div class="time-range-slider">
+                        <div class="time-range-container">
+                            <!-- Time range boxes will be generated here dynamically -->
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="course-selection-section">
                     <label for="courseSelect" class="course-label">Change golf course</label>
                     <div class="course-dropdown-container">

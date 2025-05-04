@@ -1,9 +1,13 @@
 // Global variables
-let currentYear;
-let currentMonth;
+let currentView = 'dateTime';
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
 let selectedDate = null;
 let selectedTime = null;
 let selectedTimeRange = '0';  // Default to '0' (Exact)
+let selectedHour = 8;
+let selectedMinute = 0;
+let selectedPeriod = 'AM';
 let currentPanel = 0;
 let panels = [];
 
@@ -101,10 +105,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Store selected date
                     selectedDate = new Date(currentYear, currentMonth, day);
-                    // RESET to the first page of slots whenever the date changes
-                    currentPanel = 0;
-                    // Update time slots based on the selected date
-                    updateTimeSlots();
+                    
+                    // Make sure time range boxes are generated
+                    if (!document.querySelector('.time-range-box')) {
+                        generateTimeRangeBoxes();
+                    }
+                    
+                    // Update the time for Monday special case
+                    if (selectedDate.getDay() === 1) { // Monday
+                        // Set initial time to 8:36 AM for Mondays
+                        selectedHour = 8;
+                        selectedMinute = 36;
+                        selectedPeriod = 'AM';
+                        
+                        // Update the time picker UI
+                        const hourValue = document.getElementById('hour-value');
+                        const minuteValue = document.getElementById('minute-value');
+                        const periodValue = document.getElementById('period-value');
+                        
+                        if (hourValue && minuteValue && periodValue) {
+                            hourValue.textContent = selectedHour;
+                            minuteValue.textContent = selectedMinute.toString().padStart(2, '0');
+                            periodValue.textContent = selectedPeriod;
+                            
+                            // Update the formatted time
+                            selectedTime = `${selectedHour}:${selectedMinute.toString().padStart(2, '0')} ${selectedPeriod}`;
+                        }
+                    }
                 }
             });
             
@@ -151,7 +178,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-});
 
     // Course dropdown functionality
     const courseDropdownContainer = document.querySelector('.course-dropdown-container');
@@ -191,199 +217,151 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Function to handle time slot clicks and panel management
-function setupTimeSlots() {
-    const timeSlotsContainer = document.querySelector('.time-slots');
-    const navButtons = document.querySelectorAll('.time-nav-btn');
+// Function to handle time selection with the new time picker
+function setupTimePicker() {
+    const hourValue = document.getElementById('hour-value');
+    const minuteValue = document.getElementById('minute-value');
+    const periodValue = document.getElementById('period-value');
+    
+    const hourPrev = document.getElementById('hour-prev');
+    const hourNext = document.getElementById('hour-next');
+    const minutePrev = document.getElementById('minute-prev');
+    const minuteNext = document.getElementById('minute-next');
+    const periodPrev = document.getElementById('period-prev');
+    const periodNext = document.getElementById('period-next');
+    
     const modal = document.getElementById('confirmationModal');
     const confirmationText = document.getElementById('confirmationText');
     const cancelBtn = document.querySelector('.cancel-btn');
     const confirmBtn = document.querySelector('.modal-footer .confirm-btn');
     const bookNowBtn = document.querySelector('.book-button');
-    let selectedTime = null;
+    const timeRangeContainer = document.querySelector('.time-range-container');
+    const timeRangePrev = document.querySelector('.time-range-prev');
+    const timeRangeNext = document.querySelector('.time-range-next');
     
-    // Function to update time slots display
-    function updateTimeSlots() {
-            
-        const timeSlotsContainer = document.querySelector('.time-slots');
-        timeSlotsContainer.innerHTML = '';
-
-        // 1) regenerate all slots
-        const allTimeSlots = generateTimeSlots();
-
-        // 2) build panels in chunks of N
-        const slotsPerPanel = 18;
-        panels = [];
-        for (let i = 0; i < allTimeSlots.length; i += slotsPerPanel) {
-            panels.push(allTimeSlots.slice(i, i + slotsPerPanel));
-        }
-
-        // 3) drop any empty panels just in case
-        panels = panels.filter(panel => panel.length > 0);
-
-        // 4) if the user was on a now-nonexistent panel, clamp back to last
-        if (currentPanel >= panels.length) {
-            currentPanel = panels.length - 1;
-        }
-        panels[currentPanel].forEach(time => {
-            const slot = document.createElement('div');
-            slot.className = 'time-slot';
-            const options = [
-                { value: '0', text: 'Exact' },
-                { value: '12', text: '±12 min' },
-                { value: '24', text: '±24 min' },
-                { value: '36', text: '±36 min' },
-                { value: '48', text: '±48 min' },
-                { value: '60', text: '±1 hr' },
-                { value: '120', text: '±2 hr' },
-                { value: '180', text: '±3 hr' },
-                { value: '240', text: '±4 hr' },
-                { value: '300', text: '±5 hr' }
-            ];
-
-            slot.innerHTML = `
-                <div class="time-text">${time}</div>
-                <div class="time-slot-dropdown">
-                    ${options.map(opt => `
-                        <div class="time-slot-dropdown-option" data-value="${opt.value}">${opt.text}</div>
-                    `).join('')}
-                </div>
-            `;
-            
-            let activeDropdown = null;
-            let activeSlot = null;
-
-            // Function to update dropdown position
-            function updateDropdownPosition() {
-                if (activeSlot && activeDropdown) {
-                    const rect = activeSlot.getBoundingClientRect();
-                    activeDropdown.style.left = `${rect.left}px`;
-                    activeDropdown.style.top = `${rect.bottom + 1}px`;
-                    // Match dropdown width to time slot width
-                    activeDropdown.style.width = `${rect.width}px`;
-                    activeDropdown.style.maxWidth = `${rect.width}px`;
-                }
-            }
-
-            // Add click event listener for the time slot
-            slot.addEventListener('click', (e) => {
-                // Don't toggle if clicking the dropdown options
-                if (e.target.classList.contains('time-slot-dropdown-option')) {
-                    return;
-                }
-                
-                const dropdown = slot.querySelector('.time-slot-dropdown');
-                
-                // If clicking the same active slot, close the dropdown and return
-                if (slot.classList.contains('active') && dropdown.style.display === 'block') {
-                    dropdown.style.display = 'none';
-                    activeDropdown = null;
-                    activeSlot = null;
-                    return;
-                }
-                
-                // Remove active class from all slots
-                document.querySelectorAll('.time-slot').forEach(el => {
-                    el.classList.remove('active');
-                    // Hide all other dropdowns
-                    const otherDropdown = el.querySelector('.time-slot-dropdown');
-                    if (otherDropdown) {
-                        otherDropdown.style.display = 'none';
-                    }
-                });
-                
-                // Add active class to clicked slot
-                slot.classList.add('active');
-                
-                // Store selected time
-                selectedTime = time;
-                
-                // Position and show the dropdown
-                activeDropdown = dropdown;
-                activeSlot = slot;
-                updateDropdownPosition();
-                dropdown.style.display = 'block';
-            });
-
-            // Add scroll and resize listeners
-            window.addEventListener('scroll', updateDropdownPosition, true);
-            window.addEventListener('resize', updateDropdownPosition);
-
-            // Handle dropdown option clicks
-            const dropdownOptions = slot.querySelectorAll('.time-slot-dropdown-option');
-            dropdownOptions.forEach(option => {
-                option.addEventListener('click', (e) => {
-                    // Clear selected class from ALL options in ALL dropdowns
-                    document.querySelectorAll('.time-slot-dropdown-option').forEach(opt => {
-                        opt.classList.remove('selected');
-                    });
-                    
-                    // Add selected class to clicked option
-                    e.target.classList.add('selected');
-                    
-                    // Store the selected time range
-                    selectedTimeRange = e.target.dataset.value;
-                    console.log(`Selected time range for ${time}: ${selectedTimeRange}`);
-
-                    // Remove active class from all other time slots
-                    document.querySelectorAll('.time-slot').forEach(el => {
-                        if (el !== slot) {
-                            el.classList.remove('active');
-                        }
-                    });
-
-                    // Close the dropdown after selection
-                    const dropdown = slot.querySelector('.time-slot-dropdown');
-                    dropdown.style.display = 'none';
-                    if (activeSlot === slot) {
-                        activeDropdown = null;
-                        activeSlot = null;
-                    }
-                });
-            });
-            
-            // Close dropdown when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!slot.contains(e.target)) {
-                    // Only hide the dropdown, don't remove the active class
-                    const dropdown = slot.querySelector('.time-slot-dropdown');
-                    dropdown.style.display = 'none';
-                    if (activeSlot === slot) {
-                        activeDropdown = null;
-                        activeSlot = null;
-                    }
-                }
-            });
-            
-            timeSlotsContainer.appendChild(slot);
-        });
-        
-        // Update navigation buttons
-        navButtons[0].disabled = currentPanel === 0;
-        navButtons[1].disabled = currentPanel === panels.length - 1;
+    // Available hours: 1-12
+    const hours = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    
+    // Available minutes: 00, 12, 24, 36, 48
+    const minutes = [0, 12, 24, 36, 48];
+    
+    // Available periods: AM, PM
+    const periods = ['AM', 'PM'];
+    
+    // Set initial values
+    hourValue.textContent = selectedHour;
+    minuteValue.textContent = selectedMinute.toString().padStart(2, '0');
+    periodValue.textContent = selectedPeriod;
+    
+    // Update the formatted time
+    function updateSelectedTime() {
+        selectedTime = `${selectedHour}:${selectedMinute.toString().padStart(2, '0')} ${selectedPeriod}`;
+        console.log(`Selected time: ${selectedTime}`);
     }
     
-    // Handle navigation
-    navButtons[0].addEventListener('click', () => {
-        if (currentPanel > 0) {
-            currentPanel--;
-            updateTimeSlots();
-        }
+    // Initialize the time on page load
+    updateSelectedTime();
+    
+    // Handle hour navigation
+    hourPrev.addEventListener('click', () => {
+        const currentIndex = hours.indexOf(selectedHour);
+        const newIndex = (currentIndex - 1 + hours.length) % hours.length;
+        selectedHour = hours[newIndex];
+        hourValue.textContent = selectedHour;
+        updateSelectedTime();
     });
     
-    navButtons[1].addEventListener('click', () => {
-        if (currentPanel < panels.length - 1) {
-            currentPanel++;
-            updateTimeSlots();
-        }
+    hourNext.addEventListener('click', () => {
+        const currentIndex = hours.indexOf(selectedHour);
+        const newIndex = (currentIndex + 1) % hours.length;
+        selectedHour = hours[newIndex];
+        hourValue.textContent = selectedHour;
+        updateSelectedTime();
     });
+    
+    // Handle minute navigation
+    minutePrev.addEventListener('click', () => {
+        const currentIndex = minutes.indexOf(selectedMinute);
+        const newIndex = (currentIndex - 1 + minutes.length) % minutes.length;
+        selectedMinute = minutes[newIndex];
+        minuteValue.textContent = selectedMinute.toString().padStart(2, '0');
+        updateSelectedTime();
+    });
+    
+    minuteNext.addEventListener('click', () => {
+        const currentIndex = minutes.indexOf(selectedMinute);
+        const newIndex = (currentIndex + 1) % minutes.length;
+        selectedMinute = minutes[newIndex];
+        minuteValue.textContent = selectedMinute.toString().padStart(2, '0');
+        updateSelectedTime();
+    });
+    
+    // Handle period navigation
+    periodPrev.addEventListener('click', () => {
+        selectedPeriod = selectedPeriod === 'AM' ? 'PM' : 'AM';
+        periodValue.textContent = selectedPeriod;
+        updateSelectedTime();
+    });
+    
+    periodNext.addEventListener('click', () => {
+        selectedPeriod = selectedPeriod === 'AM' ? 'PM' : 'AM';
+        periodValue.textContent = selectedPeriod;
+        updateSelectedTime();
+    });
+    
+    // Generate time range boxes
+    window.generateTimeRangeBoxes = function() {
+        timeRangeContainer.innerHTML = '';
+        
+        const ranges = [
+            { value: '0', text: 'Exact time' },
+            { value: '12', text: '+12 min' },
+            { value: '24', text: '+24 min' },
+            { value: '36', text: '+36 min' },
+            { value: '48', text: '+48 min' },
+            { value: '60', text: '+1 hr' },
+            { value: '120', text: '+2 hr' },
+            { value: '180', text: '+3 hr' },
+            { value: '240', text: '+4 hr' },
+            { value: '300', text: '+5 hr' }
+        ];
+        
+        // Create time range boxes without wrapper
+        ranges.forEach(range => {
+            const box = document.createElement('div');
+            box.className = 'time-range-box';
+            if (range.value === selectedTimeRange) {
+                box.classList.add('selected');
+            }
+            box.dataset.value = range.value;
+            box.textContent = range.text;
+            
+            box.addEventListener('click', () => {
+                // Remove selected class from all boxes
+                document.querySelectorAll('.time-range-box').forEach(b => {
+                    b.classList.remove('selected');
+                });
+                
+                // Add selected class to clicked box
+                box.classList.add('selected');
+                
+                // Store the selected range
+                selectedTimeRange = range.value;
+                console.log(`Selected time range: ${range.text} (${range.value})`);
+            });
+            
+            timeRangeContainer.appendChild(box);
+        });
+        
+        // No need for slider navigation in this UI design
+    };
     
     // Handle Book Now button click
     bookNowBtn.addEventListener('click', () => {
         const activeDay = document.querySelector('.calendar-day.active');
-        const activeTimeSlot = document.querySelector('.time-slot.active');
+        const selectedRangeBox = document.querySelector('.time-range-box.selected');
         
-        if (activeDay && activeTimeSlot) {
+        if (activeDay) {
             selectedDate = new Date(
                 currentYear,
                 currentMonth,
@@ -399,8 +377,11 @@ function setupTimeSlots() {
             const day = selectedDate.getDate();
             const year = selectedDate.getFullYear();
             
-            confirmationText.textContent = `You have selected: ${dayName}, ${monthName} ${day}, ${year} at ${selectedTime}`;
+            const rangeText = selectedRangeBox ? ` (${selectedRangeBox.textContent})` : '';
+            confirmationText.textContent = `You have selected: ${dayName}, ${monthName} ${day}, ${year} at ${selectedTime}${rangeText}`;
             modal.style.display = 'flex';
+        } else {
+            alert('Please select a date before confirming.');
         }
     });
     
@@ -425,12 +406,15 @@ function setupTimeSlots() {
     });
     
     confirmBtn.addEventListener('click', async () => {
-        if (selectedDate && selectedTime) {
+        if (selectedDate) {
             // Add loading state to the button
             confirmBtn.classList.add('loading');
             confirmBtn.disabled = true;
             
             try {
+                // Get the selected course value
+                const selectedCourse = document.querySelector('.course-dropdown-option.selected').dataset.value;
+                
                 const response = await fetch('/submit', {
                     method: 'POST',
                     headers: {
@@ -439,7 +423,8 @@ function setupTimeSlots() {
                     body: JSON.stringify({
                         date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`,
                         time: selectedTime,
-                        time_slot_range: selectedTimeRange
+                        time_slot_range: selectedTimeRange,
+                        course: selectedCourse
                     })
                 });
 
@@ -455,25 +440,20 @@ function setupTimeSlots() {
                     
                     // Clear the selected values
                     selectedDate = null;
-                    selectedTime = null;
+                    
+                    // Reset time range selection
                     selectedTimeRange = '0';
+                    document.querySelectorAll('.time-range-box').forEach(box => {
+                        box.classList.remove('selected');
+                        if (box.dataset.value === '0') {
+                            box.classList.add('selected');
+                        }
+                    });
                     
                     // Remove active class from calendar day
                     const activeDay = document.querySelector('.calendar-day.active');
                     if (activeDay) {
                         activeDay.classList.remove('active');
-                    }
-                    
-                    // Remove active class from time slot
-                    const activeTimeSlot = document.querySelector('.time-slot.active');
-                    if (activeTimeSlot) {
-                        activeTimeSlot.classList.remove('active');
-                    }
-                    
-                    // Reset the time slot dropdown if it's open
-                    const dropdown = activeTimeSlot?.querySelector('.time-slot-dropdown');
-                    if (dropdown) {
-                        dropdown.style.display = 'none';
                     }
                 } else {
                     alert('Error submitting reservation: ' + result.message);
@@ -489,19 +469,19 @@ function setupTimeSlots() {
                 console.error('Error:', error);
             }
         } else {
-            alert('Please select both a date and time before confirming.');
+            alert('Please select a date before confirming.');
         }
     });
     
-    // Initialize time slots
-    updateTimeSlots();
-    
-    // Make updateTimeSlots available globally
-    window.updateTimeSlots = updateTimeSlots;
+    // Initialize time range boxes
+    generateTimeRangeBoxes();
 }
 
 // Call the setup function when the document is loaded
-document.addEventListener('DOMContentLoaded', setupTimeSlots);
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize time picker
+    setupTimePicker();
+});
 
 function displayAtlantaTimezone() {
     const now = new Date();
