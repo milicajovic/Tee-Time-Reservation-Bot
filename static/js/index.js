@@ -153,36 +153,43 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Function to generate all time slots
-function generateTimeSlots() {
-    const slots = [];
-    let hour = 8;
-    let minute = 0;
-    
-    // Check if the selected date is a Monday
-    const isMonday = selectedDate && selectedDate.getDay() === 1;
-    
-    // If it's Monday, start from 8:36 AM
-    if (isMonday) {
-        hour = 8;
-        minute = 36;
-    }
-    
-    while (hour < 19 || (hour === 19 && minute === 0)) { // Until exactly 19:00
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const displayHour = hour > 12 ? hour - 12 : hour;
-        const timeStr = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
-        slots.push(timeStr);
+    // Course dropdown functionality
+    const courseDropdownContainer = document.querySelector('.course-dropdown-container');
+    const courseDropdownButton = document.querySelector('.course-dropdown-button');
+    const courseDropdownOptions = document.querySelector('.course-dropdown-options');
+    const selectedValue = document.querySelector('.selected-value');
+
+    // Toggle dropdown
+    courseDropdownButton.addEventListener('click', function(e) {
+        e.stopPropagation();
+        courseDropdownContainer.classList.toggle('active');
+    });
+
+    // Handle option selection
+    courseDropdownOptions.addEventListener('click', function(e) {
+        const option = e.target.closest('.course-dropdown-option');
+        if (!option) return;
+
+        // Update selected value
+        selectedValue.textContent = option.textContent;
         
-        minute += 12;
-        if (minute >= 60) {
-            hour++;
-            minute = 0;
+        // Update selected state
+        courseDropdownOptions.querySelectorAll('.course-dropdown-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        option.classList.add('selected');
+
+        // Close dropdown
+        courseDropdownContainer.classList.remove('active');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!courseDropdownContainer.contains(e.target)) {
+            courseDropdownContainer.classList.remove('active');
         }
-    }
-    
-    return slots;
-}
+    });
+});
 
 // Function to handle time slot clicks and panel management
 function setupTimeSlots() {

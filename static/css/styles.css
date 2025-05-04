@@ -185,8 +185,105 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     justify-content: center;
-    padding: 0 20px;
-    box-sizing: border-box;
+.course-selection-section {
+    width: 100%;
+    position: relative;
+    overflow: visible;
+}
+
+.course-label {
+    font-family: 'Futura Light', sans-serif;
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 10px;
+    margin-left: 5px;
+    display: block;
+}
+
+.course-dropdown-container {
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: visible;
+    z-index: 1000;
+}
+
+.course-dropdown-button {
+    background: #f7f7f7;
+    border: 1px solid #e0e0e0;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Futura Light', sans-serif;
+    color: #333;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.course-dropdown-button:hover {
+    background-color: #f7f7f7;
+    border-color: #091c3e;
+}
+
+.course-dropdown-button .selected-value {
+    flex: 1;
+    text-align: left;
+}
+
+.course-dropdown-button i {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+.course-dropdown-container.active .course-dropdown-button i {
+    transform: rotate(180deg);
+}
+
+.course-dropdown-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #f7f7f7;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    margin-top: 4px;
+    display: none;
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 9999;
+    overflow: visible;
+    min-height: 40px;
+    transform: translateZ(0);
+}
+
+.course-dropdown-container.active .course-dropdown-options {
+    display: block;
+    height: auto;
+    overflow: visible;
+    position: absolute;
+}
+
+.course-dropdown-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    font-family: 'Futura Light', sans-serif;
+    color: #21345C;
+    display: block;
+    width: 100%;
+    min-height: 30px;
+}
+
+.course-dropdown-option:hover {
+    background-color: #e4e8eb;
+}
+
+
+.course-dropdown-option.selected {
+    background-color: #f7f7f7;
+    color: #091c3e;
 }
 
 .calendar {
@@ -194,7 +291,6 @@ body {
     border-radius: 0px;
     overflow: hidden;
     width: 100%;
-    max-width: 580px;
     flex-shrink: 0;
     align-self: flex-start;
     font-family: 'Futura Light', sans-serif;
@@ -745,7 +841,6 @@ body {
     }
 
     .header-tutorial-link {
-        left: 20px;
         font-size: 14px;
     }
 }

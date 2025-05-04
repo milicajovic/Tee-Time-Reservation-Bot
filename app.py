@@ -41,13 +41,14 @@ def submit():
         # Get the JSON data from the request
         data = request.json
 
-        # Extract date, time, and time_slot_range from the request
+        # Extract date, time, time_slot_range, and course from the request
         date = data.get('date')
         time = data.get('time')
         time_slot_range = int(data.get('time_slot_range', '0'))  # Default to 0 if not provided
+        course = data.get('course', 'ALL')  # Default to 'ALL' if not provided
 
         # Log the received data
-        logging.info(f"Received reservation request - Date: {date}, Time: {time}, Time Slot Range: {time_slot_range}")
+        logging.info(f"Received reservation request - Date: {date}, Time: {time}, Time Slot Range: {time_slot_range}, Course: {course}")
 
         # Calculate utc_activation_time based on the date and time
         raw_iso = calculate_utc_activation_time(date, time)
@@ -67,7 +68,8 @@ def submit():
             "status": "pending",  # default status
             "locked_until": datetime(1970, 1, 1, tzinfo=pytz.utc),
             "retry_count": 0,                 # Default retry count is 0
-            "screenshot_folder_url": ""     # Will be set when processing starts
+            "screenshot_folder_url": "",     # Will be set when processing starts
+            "course": course                  # Use the provided course or default to 'ALL'
         }
 
         # Insert the entity into the table
@@ -172,6 +174,7 @@ def run_reservation():
     reservation_date = entity["date"]
     reservation_time = entity["time"]
     time_slot_range = entity.get("time_slot_range", 0)  # Get time_slot_range, default to 0
+    course = entity["course"]  # Get course directly from entity
     retry_count = entity.get("retry_count", 0) + 1
 
     # 2) Lock it right away
@@ -197,8 +200,8 @@ def run_reservation():
     # 3) PROCESS it
     result = {"RowKey": row_key}
     try:
-        logging.info(f"Processing reservation {row_key}: {reservation_date} {reservation_time} with time slot range {time_slot_range}")
-        open_website(reservation_date, reservation_time, time_slot_range)
+        logging.info(f"Processing reservation {row_key}: {reservation_date} {reservation_time} with time slot range {time_slot_range} for course {course}")
+        open_website(reservation_date, reservation_time, time_slot_range, course)
         # If we get here, it succeeded:
         entity["status"] = "executed"
         entity["locked_until"] = None
@@ -251,6 +254,7 @@ def get_reservations():
                 'status': entity['status'],
                 'retry_count': entity.get('retry_count', 0),  # Default to 0 if not present
                 'screenshot_folder_url': entity.get('screenshot_folder_url', '')  # Default to empty string if not present
+               
             })
         
         return jsonify({

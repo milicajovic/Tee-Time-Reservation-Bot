@@ -358,9 +358,8 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
             # Find the specific date and check if it's available
             # The date element must have:
             # - ft_code_1 class (indicating it's available)
-            # - "Tee Times Available" title
             # - Correct month (0-based) and year
-            date_selector = f"td.ft_code_1[title='Tee Times Available'][data-month='{month}'][data-year='{year}'] a:contains('{day}')"
+            date_selector = f"td.ft_code_1[data-month='{month}'][data-year='{year}'] a:contains('{day}')"
             print(f"Checking if {date_str} is available for booking...")
             
             # Wait for the date element to be present and check if it's available
@@ -387,6 +386,93 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
             take_screenshot(sb, "select_tee_time_date")
             if attempt < max_attempts - 1:
                 print("Retrying...")
+                time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+                continue
+            return False
+
+def select_course(sb, course, max_attempts=3):
+    """Select the desired course from the dropdown menu"""
+    for attempt in range(max_attempts):
+        try:
+            # Ensure we're on the ForeTees tab
+            print("Ensuring we're on the ForeTees tab...")
+            for handle in sb.driver.window_handles:
+                sb.driver.switch_to.window(handle)
+                current_url = sb.get_current_url()
+                if "foretees.com" in current_url:
+                    print(f"Found and switched to ForeTees tab: {current_url}")
+                    break
+            else:
+                print("Could not find ForeTees tab")
+                if attempt < max_attempts - 1:
+                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
+                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+                    continue
+                return False
+
+            print("Waiting for course dropdown to load...")
+            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            
+            # Find the course dropdown
+            course_selector = "select[name='course']"
+            if not sb.is_element_present(course_selector):
+                print("Course dropdown not found")
+                take_screenshot(sb, "course_dropdown_not_found")
+                if attempt < max_attempts - 1:
+                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
+                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+                    continue
+                return False
+            
+            # Click the dropdown to open it
+            print("Clicking course dropdown...")
+            sb.click(course_selector)
+            time.sleep(3)
+            take_screenshot(sb, "after_course_dropdown_click")
+            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            
+            # Map the course value to the dropdown option value
+            course_value = {
+                "Brookhaven": "Brookhaven",
+                "Crabapple": "Crabapple",
+                "ALL": "-ALL-"
+            }.get(course, "-ALL-")  # Default to ALL if course not recognized
+            
+            # Select the course using SeleniumBase's select_option_by_value
+            print(f"Selecting course: {course} (value: {course_value})")
+            sb.select_option_by_value(course_selector, course_value)
+            time.sleep(2)  # Wait for selection to take effect
+            take_screenshot(sb, "after_course_selection")
+            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            
+            # Wait for URL to update and verify selection by checking URL
+            wait_start = time.time()
+            url_verified = False
+            while time.time() - wait_start < 5:  # Wait up to 5 seconds for URL to update
+                current_url = sb.get_current_url()
+                print(f"Current URL: {current_url}")
+                
+                # Check if the course value appears in the URL
+                expected_url_param = f"course={course_value}"
+                if expected_url_param in current_url:
+                    print(f"URL verification successful - found {expected_url_param} in URL")
+                    url_verified = True
+                    break
+                
+                time.sleep(0.5)  # Short delay between URL checks
+            
+            if not url_verified:
+                print(f"Warning: Could not verify course selection in URL. Expected {course_value}, URL: {current_url}")
+                # Continue anyway since the selection might still have worked
+            
+            print(f"Successfully selected course: {course} (value: {course_value})")
+            return True
+            
+        except Exception as e:
+            print(f"Error selecting course (attempt {attempt + 1}): {str(e)}")
+            take_screenshot(sb, "select_course_error")
+            if attempt < max_attempts - 1:
+                print(f"Retry attempt {attempt + 1} of {max_attempts}")
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                 continue
             return False
@@ -495,7 +581,7 @@ def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
             
             # Take screenshot of available time slots around selected time
             take_screenshot(sb, "available_time_slots_around_selected")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms REMOVE
             
             # Click the time button using JavaScript to avoid element interception
             sb.driver.execute_script("arguments[0].click();", selected_slot[1])
@@ -941,7 +1027,12 @@ def send_email(reservation_date, reservation_time, success=True):
     except Exception as e:
         logging.error(f"Error sending email: {e}")
 
-def open_website(reservation_date, reservation_time, time_slot_range=0):
+def open_website(reservation_date, reservation_time, time_slot_range, course):
+    """
+    Main function to handle the tee time reservation process.
+    When called from app.py, all parameters are required and come from the database.
+    When run directly (for testing), time_slot_range and course can use defaults.
+    """
     try:
         url = os.getenv('CLUB_URL')
         print(f"Attempting to navigate to: {url}")
@@ -978,6 +1069,11 @@ def open_website(reservation_date, reservation_time, time_slot_range=0):
             if not select_tee_time_date(sb, reservation_date):
                 send_email(reservation_date, reservation_time, success=False)
                 raise Exception("Failed to select tee time date")
+            
+            print("Proceeding with course selection...")
+            if not select_course(sb, course):
+                send_email(reservation_date, reservation_time, success=False)
+                raise Exception("Failed to select course")
             
             print("Proceeding with tee time selection...")
             try:
@@ -1023,14 +1119,16 @@ def open_website(reservation_date, reservation_time, time_slot_range=0):
         print(f"Error type: {type(e).__name__}")
         raise
 
+# This section is only for testing the script directly
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python login.py <YYYY-MM-DD> <hh:mm [AM|PM]> [time_slot_range]")
+    if len(sys.argv) < 5:
+        print("Usage: python login.py <YYYY-MM-DD> <hh:mm [AM|PM]> <time_slot_range> <course>")
         sys.exit(1)
 
     date_arg = sys.argv[1]
     time_arg = sys.argv[2]
-    time_slot_range = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+    time_slot_range = int(sys.argv[3])
+    course = sys.argv[4]
 
-    open_website(date_arg, time_arg, time_slot_range) 
+    open_website(date_arg, time_arg, time_slot_range, course) 
  
