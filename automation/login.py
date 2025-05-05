@@ -13,6 +13,8 @@ import uuid
 import logging
 from .blob_storage import BlobStorageService
 import random
+import pytz
+import ntplib
 
 # Load environment variables
 load_dotenv()
@@ -477,145 +479,147 @@ def select_course(sb, course, max_attempts=3):
                 continue
             return False
 
+def time_to_minutes(time_str):
+    """Convert 'HH:MM AM/PM' to minutes since midnight"""
+    try:
+        dt = datetime.strptime(time_str.upper(), "%I:%M %p")
+        return dt.hour * 60 + dt.minute
+    except ValueError:
+        return None
+
+def wait_until_refresh_time(target_time_est):
+    """Precisely wait until target refresh time using server's EST time"""
+    while True:
+        now = datetime.now(pytz.timezone('America/New_York'))
+        if now >= target_time_est:
+            break
+        # Sleep in small increments near the target time
+        delta = (target_time_est - now).total_seconds()
+        sleep_time = min(delta, 0.25)  # Check 4x/sec near target time
+        time.sleep(sleep_time)
+        
 class NoSlotWithinRange(Exception):
     """Raised when no tee time slots are available within the allowed range"""
     pass
 
-def select_tee_time(sb, desired_time, time_slot_range=0, max_attempts=3):
-    """Select the desired tee time from the available slots within the allowed range"""
-    for attempt in range(max_attempts):
+def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est):
+    """High-performance tee time selection with optimal speed
+    
+    This function strictly enforces the following criteria:
+    1. Only selects time slots with exactly 4 open positions
+    2. Only selects times between the desired time and desired time + time_slot_range minutes
+    3. Selects the earliest available time that meets criteria 1 and 2
+    """
+
+    # Convert desired time to minutes for comparison (e.g., "8:00 AM" -> 480 minutes)
+    target_min = time_to_minutes(desired_time)
+    if target_min is None:
+        raise ValueError("Invalid desired_time format")
+    
+    # Calculate the maximum allowed time in minutes (e.g., for 8:00 AM with range 24, max would be 8:24 AM)
+    max_min = target_min + time_slot_range
+    
+    # XPath that finds all tee time buttons in rows that have 4 open positions
+    # This enforces REQUIREMENT #1: Only slots with 4 open positions
+    fast_xpath = (
+        f"//div[contains(@class, 'rwdTr')][.//div[contains(@class, 'slotCount') and "
+        f"contains(@class, 'openSlots4')]]//a[contains(@class, 'teetime_button')]"
+    )
+    
+    # Wait for precise refresh time
+    print(f"Waiting until {refresh_time_est.strftime('%H:%M:%S')} EST")
+    wait_until_refresh_time(refresh_time_est)
+    
+    # Refresh exactly at target time
+    print("Performing precision refresh")
+    sb.driver.refresh()
+    
+    # Wait for tee time list to reload
+    sb.wait_for_element("div.rwdTr", timeout=5)
+    
+    # Get all matching time elements in a single operation
+    time_elements = sb.find_elements(fast_xpath, by='xpath')
+    print(f"Found {len(time_elements)} potential time slots with 4 open positions")
+    
+    # Fast loop to find first valid time slot within our desired time range
+    selected_element = None
+    selected_minutes = None
+    
+    # For each time element, check if it's within our desired range
+    for element in time_elements:
+        time_str = element.text.strip()
+        minutes = time_to_minutes(time_str)
+        
+        # This enforces REQUIREMENT #2: Only times within the desired range
+        # Example: for 8:00 AM with range 24, only times between 8:00 AM and 8:24 AM inclusive
+        if minutes and target_min <= minutes <= max_min:
+            print(f"Found valid time slot: {time_str} (within range {desired_time} to {max_min//60}:{max_min%60:02d})")
+            # Found the first valid slot in our time range - select it immediately
+            selected_element = element
+            selected_minutes = minutes
+            break
+    
+    # If no valid slot found that meets BOTH requirements (4 open positions AND within time range)
+    if not selected_element:
+        # Try to find the desired time element to center in screenshot - checking both formats
         try:
-            # Ensure we're on the ForeTees tab
-            print("Ensuring we're on the ForeTees tab...")
-            for handle in sb.driver.window_handles:
-                sb.driver.switch_to.window(handle)
-                current_url = sb.get_current_url()
-                if "foretees.com" in current_url:
-                    print(f"Found and switched to ForeTees tab: {current_url}")
-                    break
-            else:
-                print("Could not find ForeTees tab")
-                if attempt < max_attempts - 1:
-                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                    continue
-                return False, None
-
-            print("Waiting for tee time sheet to load...")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            # Combined XPath to find either type of time slot with the desired time
+            desired_time_xpath = (
+                f"//a[contains(@class,'teetime_button') and normalize-space(text())='{desired_time}'] | "
+                f"//div[contains(@class,'time_slot') and normalize-space(text())='{desired_time}']"
+            )
+            desired_element = sb.find_element(desired_time_xpath, by='xpath')
             
-            # Find all rows in the tee time sheet
-            rows = sb.find_elements("div.rwdTr")
-            print(f"Found {len(rows)} total rows")
-            take_screenshot(sb, "found_time_slots")
-            
-            # Find all available time slots with exactly 4 open slots
-            available_slots = []
-            for row in rows:
-                try:
-                    # Check if this row has a clickable time button
-                    time_button = row.find_element(By.CSS_SELECTOR, "a.teetime_button")
-                    if not time_button:
-                        continue
-                        
-                    # Check if this row has exactly 4 open slots
-                    slot_count = row.find_elements(By.CSS_SELECTOR, ".slotCount.openSlot.openSlots4")
-                    if not slot_count:
-                        continue
-                        
-                    # Get the time text
-                    time_text = time_button.text.strip()
-                    print(f"Found available time slot: {time_text} with 4 open slots")
-                    available_slots.append((time_text, time_button, row))  # Now also store the row element
-                except:
-                    continue
-            
-            print(f"Found {len(available_slots)} time slots with 4 open slots")
-            
-            if not available_slots:
-                print("No time slots found with 4 open slots")
-                if attempt < max_attempts - 1:
-                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                    continue
-                return False, None
-            
-            # Convert times to minutes for comparison
-            def time_to_minutes(time_str):
-                try:
-                    # Parse the time string (e.g., "9:00 AM")
-                    time_obj = datetime.strptime(time_str, "%I:%M %p")
-                    return time_obj.hour * 60 + time_obj.minute
-                except ValueError:
-                    print(f"Error parsing time string: {time_str}")
-                    return None
-
-            def get_time_difference(time1, time2):
-                minutes1 = time_to_minutes(time1)
-                minutes2 = time_to_minutes(time2)
-                if minutes1 is None or minutes2 is None:
-                    return float('inf')
-                return abs(minutes1 - minutes2)
-
-            # Filter slots based on time_slot_range
-            if time_slot_range == 0:
-                # Exact match only
-                exact_slots = [slot for slot in available_slots if get_time_difference(slot[0], desired_time) == 0]
-                if not exact_slots:
-                    raise NoSlotWithinRange("No exact time slot available")
-                available_slots = exact_slots
-            else:
-                # Filter slots within range
-                available_slots = [slot for slot in available_slots 
-                                 if get_time_difference(slot[0], desired_time) <= time_slot_range]
-                if not available_slots:
-                    raise NoSlotWithinRange(f"No time slots available within {time_slot_range} minutes")
-
-            # Sort by time difference and pick closest
-            available_slots.sort(key=lambda x: get_time_difference(x[0], desired_time))
-            selected_slot = available_slots[0]
-            
-            # Scroll to the selected slot
-            sb.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", selected_slot[2])            
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            
-            # Take screenshot of available time slots around selected time
-            take_screenshot(sb, "available_time_slots_around_selected")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms REMOVE
-            
-            # Click the time button using JavaScript to avoid element interception
-            sb.driver.execute_script("arguments[0].click();", selected_slot[1])
-            take_screenshot(sb, "after_time_selection")
-            print(f"Successfully selected time slot: {selected_slot[0]}")
-            
-            return True, selected_slot[0]
-            
-        except NoSlotWithinRange as e:
-            print(f"No slots within range: {str(e)}")
-            # Try to find and scroll to the desired time slot
+            # Get the parent row for better context in the screenshot
             try:
-                # Find the time slot element that matches the desired time
-                time_slot_selector = f"div.time_slot:contains('{desired_time}'), a.teetime_button:contains('{desired_time}')"
-                time_slot_element = sb.find_element(time_slot_selector)
-                if time_slot_element:
-                    # Scroll element to the vertical center of the viewport
-                    sb.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", time_slot_element)
-                    # Wait a moment so the page can settle
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            except Exception as scroll_error:
-                print(f"Could not scroll to time slot: {str(scroll_error)}")
-            
-            # Take a screenshot when no slots are available within range
-            take_screenshot(sb, "no_slots_available")
-            raise
-        except Exception as e:
-            print(f"Error selecting tee time: {str(e)}")
-            take_screenshot(sb, "select_tee_time")
-            if attempt < max_attempts - 1:
-                print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                continue
-            return False, None
+                parent_row = desired_element.find_element(By.XPATH, "./ancestor::div[contains(@class, 'rwdTr')]")
+                # Center the entire row in the viewport for better context
+                sb.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", 
+                    parent_row
+                )
+            except Exception:
+                # Fallback to just the time element if we can't find the parent row
+                sb.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", 
+                    desired_element
+                )
+        except Exception:
+            # If we can't find the exact time, try to center on the tee times container
+            try:
+                container = sb.find_element("div.teetime_list", by='css selector')
+                sb.driver.execute_script(
+                    "arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", 
+                    container
+                )
+            except Exception:
+                pass
+                
+        # Now take the screenshot after centering
+        take_screenshot(sb, "no_available_slot_at_desired_time")
+        raise NoSlotWithinRange(f"No slots between {desired_time} and {max_min//60}:{max_min%60:02d}")
+    
+    # We have found a time slot that meets ALL requirements:
+    # 1. Has 4 open positions
+    # 2. Is within desired time range
+    print(f"Selecting time slot: {selected_minutes//60}:{selected_minutes%60:02d}")
+    
+    # First, get the parent row element for better screenshot (contains all player info)
+    try:
+        parent_row = selected_element.find_element(By.XPATH, "./ancestor::div[contains(@class, 'rwdTr')]")
+    except Exception:
+        parent_row = selected_element  # Fallback to the element itself
+        
+    # Center the row in the viewport for the screenshot
+    sb.driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", parent_row)
+    
+    # Take screenshot of the element before clicking
+    take_screenshot(sb, "available_time_slots_around_selected")
+    
+    # Fast click using JavaScript
+    sb.driver.execute_script("arguments[0].click();", selected_element)
+    
+    return True, f"{selected_minutes//60}:{selected_minutes%60:02d}"
 
 def handle_tee_time_popup(sb, max_attempts=3):
     """Handle the pop-up dialog that appears after selecting a tee time"""
@@ -637,7 +641,6 @@ def handle_tee_time_popup(sb, max_attempts=3):
             
             # Wait for the "Yes, Continue" button to be present and clickable
             print("Waiting for 'Yes, Continue' button...")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             if not sb.is_element_present("button:contains('Yes, Continue')"):
                 print("Continue button not found")
                 if attempt < max_attempts - 1:
@@ -980,7 +983,7 @@ def handle_logout(sb, max_attempts=3):
                 continue
             return False
 
-def send_email(reservation_date, reservation_time, success=True):
+def send_email(reservation_date, reservation_time, actual_time=None, success=True):
     sender_email = os.getenv('SENDER_EMAIL')
     app_password = os.getenv('APP_PASSWORD')     
     receiver_emails = os.getenv('RECEIVER_EMAIL').split(',')  # Split by comma to get list of emails
@@ -994,13 +997,28 @@ def send_email(reservation_date, reservation_time, success=True):
     base_url = os.getenv('BASE_URL')  # Get base URL from env or default to localhost
     gallery_link = f"{base_url}/gallery?date={reservation_date}&time={reservation_time}"
     
+    if actual_time is not None:       
+        hour_str, minute_str = actual_time.split(':')
+        hour = int(hour_str)
+        minute = int(minute_str)
+        
+        # Convert to 12-hour format
+        period = "AM" if hour < 12 else "PM"
+        hour = hour if hour <= 12 else hour - 12
+        hour = 12 if hour == 0 else hour  # Handle midnight/noon
+        formatted_time = f"{hour}:{minute:02d} {period}"
+        
+        # Replace actual_time with the formatted version
+        actual_time = formatted_time
+    
+
     if success:
         html = f"""<html>
         <body>
             <h3 style="color:#2a5e2a;">Reservation Successful!</h3>
             <p>Your tee time has been booked.</p>
             <p>Date: {reservation_date}<br>
-               Time: {reservation_time}</p>
+               Time: {actual_time}</p>
             <p>To view the reservation details and screenshots, please <a href="{gallery_link}">click here</a>.</p>
             <p>Thank you for using our service!</p>
         </body>
@@ -1027,12 +1045,73 @@ def send_email(reservation_date, reservation_time, success=True):
     except Exception as e:
         logging.error(f"Error sending email: {e}")
 
+class TimeSyncError(Exception):
+    pass
+
+def verify_time_sync():
+    client = ntplib.NTPClient()
+    response = client.request('pool.ntp.org')
+    server_time = datetime.fromtimestamp(response.tx_time, pytz.utc)
+    local_time = datetime.now(pytz.utc)
+    if abs((server_time - local_time).total_seconds()) > 1:
+        raise TimeSyncError("Server time out of sync with NTP")
+
+def calculate_refresh_time():
+    """
+    Calculate the precise refresh time using current date and configured unlock time from .env file.
+    
+    Returns:
+        datetime: Refresh time localized to EST timezone
+    """
+    # Verify system time is accurate
+    verify_time_sync()
+    
+    # Get unlock time from .env file
+    unlock_time_str = os.getenv('UNLOCK_TIME_EST', "04:28")
+    print(f"unlock_time_str: {unlock_time_str}")
+    
+    # Get current date in EST
+    est = pytz.timezone('America/New_York')
+    now_est = datetime.now(est)
+    today_str = now_est.strftime('%Y-%m-%d')
+    
+    # Combine current date with configured unlock time
+    refresh_time_str = f"{today_str} {unlock_time_str}:00"
+    
+    # Parse combined datetime
+    try:
+        naive_refresh_time = datetime.strptime(refresh_time_str, "%Y-%m-%d %H:%M:%S")
+    except ValueError as e:
+        print(f"Error parsing unlock time: {e}")
+        print("Using default unlock time (07:30 EST)")
+        naive_refresh_time = datetime.strptime(f"{today_str} 07:30:00", "%Y-%m-%d %H:%M:%S")
+    
+    # Localize the datetime to EST timezone
+    refresh_time = est.localize(naive_refresh_time)
+    
+    # If refresh_time is in the past (we missed it today), log a warning
+    if refresh_time < now_est:
+        print(f"WARNING: Unlock time {unlock_time_str} has already passed for today.")
+        # We'll still proceed with the operation
+    
+    # Calculate time difference
+    time_diff = (refresh_time - now_est).total_seconds()
+    
+    # Print debug information about times
+    print(f"Target refresh time (EST): {refresh_time.strftime('%Y-%m-%d %H:%M:%S %Z%z')}")
+    print(f"Current time (EST): {now_est.strftime('%Y-%m-%d %H:%M:%S %Z%z')}")
+    print(f"Time until refresh: {time_diff} seconds")
+    
+    return refresh_time
+
 def open_website(reservation_date, reservation_time, time_slot_range, course):
     """
     Main function to handle the tee time reservation process.
     When called from app.py, all parameters are required and come from the database.
-    When run directly (for testing), time_slot_range and course can use defaults.
     """
+    # Calculate the refresh time using the utility function
+    refresh_time = calculate_refresh_time()
+    
     try:
         url = os.getenv('CLUB_URL')
         print(f"Attempting to navigate to: {url}")
@@ -1077,7 +1156,7 @@ def open_website(reservation_date, reservation_time, time_slot_range, course):
             
             print("Proceeding with tee time selection...")
             try:
-                success, actual_time = select_tee_time(sb, reservation_time, time_slot_range)
+                success, actual_time = select_tee_time(sb, reservation_time, time_slot_range, refresh_time)
                 if not success:
                     send_email(reservation_date, reservation_time, success=False)
                     raise Exception("Failed to select tee time")
@@ -1112,7 +1191,7 @@ def open_website(reservation_date, reservation_time, time_slot_range, course):
             sb.wait_for_element_present("body", timeout=2)  # Brief pause before closing
             
             # If we reach here, everything was successful
-            send_email(reservation_date, actual_time, success=True)
+            send_email(reservation_date, reservation_time, actual_time, success=True)
             
     except Exception as e:
         print(f"An error occurred: {str(e)}")
