@@ -141,7 +141,7 @@ def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
     advance_days = days_advance.get(desired_et.weekday(), 3)
     
     activation_et = desired_et - timedelta(days=advance_days)
-    activation_et = activation_et.replace(hour=7, minute=30, second=0, microsecond=0)
+    activation_et = activation_et.replace(hour=7, minute=26, second=0, microsecond=0)
     activation_utc = activation_et.astimezone(pytz.utc)
     return activation_utc.isoformat()
 
@@ -151,7 +151,7 @@ def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
 def run_reservation():
     # Constants
     MAX_RETRIES = 3
-    LOCK_DURATION_MINUTES = 5
+    LOCK_DURATION_MINUTES = 7
 
     table_client = get_table_client()
     now_utc = datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
