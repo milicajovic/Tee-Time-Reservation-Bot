@@ -546,8 +546,16 @@ def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est):
         # Filter out already tried times
         valid_slots = [slot for slot in valid_slots if slot[0] not in tried_times]
         if not valid_slots:
-            # No more slots to try
-            take_screenshot(sb, "no_available_slot_at_desired_time")
+            # Universal XPath for any slot state
+            row_xpath = (
+                f"//div[contains(@class, 'rwdTr')]"
+                f"//*[self::a or self::div[contains(@class, 'time_slot')]]"
+                f"[normalize-space(text())='{desired_time}']"
+                f"/ancestor::div[contains(@class, 'rwdTr')]"
+            )
+            parent_row = sb.find_element(row_xpath, by='xpath')            
+            sb.driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", parent_row)
+            take_screenshot(sb, "no_available_slot_at_desired_time")    
             raise NoSlotWithinRange(f"All slots between {desired_time} and {max_min//60}:{max_min%60:02d} were taken or unavailable")
         # Try the next available slot
         time_str, minutes = valid_slots[0]
