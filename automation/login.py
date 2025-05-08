@@ -1105,6 +1105,53 @@ def calculate_refresh_time():
     
     return refresh_time
 
+def verify_captcha_success(sb, url, max_attempts=3):
+    """Verify if the captcha was successfully solved by checking for either:
+    1. The presence of the club URL in the current URL
+    2. The absence of Cloudflare elements
+    Returns True if captcha was solved, False otherwise
+    """
+    for attempt in range(max_attempts):
+        try:
+            # Initial connection and captcha handling
+            if attempt == 0:
+                sb.uc_open_with_reconnect(url, 6)
+                take_screenshot(sb, "initial_page_load")
+            
+            sb.uc_gui_click_captcha()
+            take_screenshot(sb, f"after_captcha_attempt_{attempt + 1}")
+            
+            # Wait for page to stabilize
+            time.sleep(random.uniform(1.2, 2.5))
+            
+            # Check current URL
+            current_url = sb.get_current_url()
+            if "capitalcityclub.org/web/pages/home" in current_url:
+                print("Captcha verification successful - found club URL")
+                return True
+                
+            # Check for Cloudflare elements
+            cloudflare_elements = sb.find_elements("a[href*='cloudflare.com']")
+            if not cloudflare_elements:
+                print("Captcha verification successful - no Cloudflare elements found")
+                return True
+                
+            print(f"Captcha verification failed - attempt {attempt + 1}")
+            if attempt < max_attempts - 1:
+                print("Retrying captcha...")
+                time.sleep(random.uniform(1.2, 2.5))
+                continue
+                
+            return False
+            
+        except Exception as e:
+            print(f"Error during captcha verification (attempt {attempt + 1}): {str(e)}")
+            take_screenshot(sb, f"captcha_verification_error_{attempt + 1}")
+            if attempt < max_attempts - 1:
+                time.sleep(random.uniform(1.2, 2.5))
+                continue
+            return False
+
 def open_website(reservation_date, reservation_time, time_slot_range, course):
     """
     Main function to handle the tee time reservation process.
@@ -1117,11 +1164,12 @@ def open_website(reservation_date, reservation_time, time_slot_range, course):
         url = os.getenv('CLUB_URL')
         print(f"Attempting to navigate to: {url}")
                 
-        with SB(uc=True) as sb:
-            sb.uc_open_with_reconnect(url, 6)
-            take_screenshot(sb, "initial_page_load")
-            sb.uc_gui_click_captcha()
-            take_screenshot(sb, "after_captcha")
+        with SB(uc=True, xvfb=True) as sb:
+            # Verify captcha success and retry if needed
+            if not verify_captcha_success(sb, url):
+                send_email(reservation_date, reservation_time, success=False)
+                raise Exception("Failed to solve captcha after multiple attempts")
+            
             print("Page loaded successfully. Looking for Member Login link...")
             take_screenshot(sb, "main_page_loaded")
             
