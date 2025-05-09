@@ -121,7 +121,7 @@ def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
         Thursday: 6 days,
         Friday: 3 days,
         Saturday: 3 days.
-    The activation time in ET is set to 07:30:00, then converted to UTC.
+    The activation time in ET is set to 07:21:00, then converted to UTC.
     Returns an ISO 8601 formatted string.
     """
     et_tz = pytz.timezone("America/New_York")
@@ -141,7 +141,7 @@ def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
     advance_days = days_advance.get(desired_et.weekday(), 3)
     
     activation_et = desired_et - timedelta(days=advance_days)
-    activation_et = activation_et.replace(hour=7, minute=26, second=0, microsecond=0)
+    activation_et = activation_et.replace(hour=7, minute=21, second=0, microsecond=0)
     activation_utc = activation_et.astimezone(pytz.utc)
     return activation_utc.isoformat()
 
@@ -151,7 +151,7 @@ def calculate_utc_activation_time(user_date: str, user_time: str) -> str:
 def run_reservation():
     # Constants
     MAX_RETRIES = 3
-    LOCK_DURATION_MINUTES = 7
+    LOCK_DURATION_MINUTES = 5
 
     table_client = get_table_client()
     now_utc = datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
