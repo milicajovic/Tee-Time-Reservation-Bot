@@ -361,7 +361,7 @@ def select_tee_time_date(sb, date_str, max_attempts=3):
             # The date element must have:
             # - ft_code_1 class (indicating it's available)
             # - Correct month (0-based) and year
-            date_selector = f"td.ft_code_1[data-month='{month}'][data-year='{year}'] a:contains('{day}')"
+            date_selector = f"td.ft_code_0[data-month='{month}'][data-year='{year}'] a:contains('{day}')"
             print(f"Checking if {date_str} is available for booking...")
             
             # Wait for the date element to be present and check if it's available
@@ -1029,6 +1029,8 @@ def send_email(reservation_date, reservation_time, actual_time=None, success=Tru
         <body>
             <h3 style="color:#8b0000;">Reservation Failed</h3>
             <p>We were unable to book your tee time.</p>
+            <p>Date: {reservation_date}<br>
+               Time: {reservation_time}</p>
             <p>To view the attempt details and screenshots, please <a href="{gallery_link}">click here</a>.</p>
             <p>Please contact support if the issue persists.</p>
             <p>We apologize for any inconvenience.</p>
@@ -1128,12 +1130,14 @@ def verify_captcha_success(sb, url, max_attempts=3):
             current_url = sb.get_current_url()
             if "capitalcityclub.org/web/pages/home" in current_url:
                 print("Captcha verification successful - found club URL")
+                take_screenshot(sb, f"found_club_URL_{attempt + 1}")
                 return True
                 
             # Check for Cloudflare elements
             cloudflare_elements = sb.find_elements("a[href*='cloudflare.com']")
             if not cloudflare_elements:
                 print("Captcha verification successful - no Cloudflare elements found")
+                take_screenshot(sb, f"no_Cloudflare_element_found_{attempt + 1}")
                 return True
                 
             print(f"Captcha verification failed - attempt {attempt + 1}")
