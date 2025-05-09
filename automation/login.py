@@ -143,7 +143,7 @@ def handle_login(sb, max_attempts=3):
                 return False
             
             # Wait for username field and enter credentials
-            username_selector = "#_58_loginnn"
+            username_selector = "#_58_login"
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
             if sb.is_element_present(username_selector):
                 sb.type(username_selector, LOGIN_CREDENTIALS["username"])
