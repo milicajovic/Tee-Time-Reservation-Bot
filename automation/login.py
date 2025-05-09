@@ -1124,14 +1124,7 @@ def verify_captcha_success(sb, url, max_attempts=3):
             take_screenshot(sb, f"after_captcha_attempt_{attempt + 1}")
             
             # Wait for page to stabilize
-            time.sleep(random.uniform(1.2, 2.5))
-            
-            # Check current URL
-            current_url = sb.get_current_url()
-            if "capitalcityclub.org/web/pages/home" in current_url:
-                print("Captcha verification successful - found club URL")
-                take_screenshot(sb, f"found_club_URL_{attempt + 1}")
-                return True
+            time.sleep(random.uniform(1.2, 2.5))                     
                 
             # Check for Cloudflare elements
             cloudflare_elements = sb.find_elements("a[href*='cloudflare.com']")
@@ -1161,6 +1154,10 @@ def open_website(reservation_date, reservation_time, time_slot_range, course):
     Main function to handle the tee time reservation process.
     When called from app.py, all parameters are required and come from the database.
     """
+    # Reset screenshot counter for each attempt
+    global _screenshot_counter
+    _screenshot_counter = 0
+    
     # Calculate the refresh time using the utility function
     refresh_time = calculate_refresh_time()
     
