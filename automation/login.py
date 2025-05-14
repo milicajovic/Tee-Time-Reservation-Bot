@@ -344,140 +344,138 @@ def handle_foretees_navigation(sb, max_attempts=3):
         take_screenshot(sb, "handle_foretees_navigation")
         return False
 
-def select_tee_time_date(sb, date_str, max_attempts=3):
-    """Select the desired date from the tee time calendar"""
-    # Parse the date string (format: YYYY-MM-DD)
-    year = int(date_str[:4])
-    month = int(date_str[5:7]) - 1  # Convert to 0-based month and remove leading zero
-    day = int(date_str[8:10])  # This will automatically remove leading zero
-    
-    for attempt in range(max_attempts):
-        try:
-            print("Waiting for calendar to load...")
-            take_screenshot(sb, "found_date_picker")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            
-            # Find the specific date and check if it's available
-            # The date element must have:
-            # - ft_code_1 class (indicating it's available)
-            # - Correct month (0-based) and year
-            date_selector = f"td.ft_code_0[data-month='{month}'][data-year='{year}'] a:contains('{day}')"
-            print(f"Checking if {date_str} is available for booking...")
-            
-            # Wait for the date element to be present and check if it's available
-            if not sb.is_element_present(date_selector):
-                print("Date is not yet available for booking. Waiting...")
-                take_screenshot(sb, "select_tee_time_date")
-                if attempt < max_attempts - 1:
-                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                    continue
-                return False
-            
-            # Date is available, try to click it
-            print("Date is available, attempting to select...")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            if sb.is_element_present(date_selector):
-                sb.click(date_selector)
-                take_screenshot(sb, "after_date_selection")
-                print(f"Successfully selected {date_str}")
-                return True
-            
-        except Exception as e:
-            print(f"Error selecting date (attempt {attempt + 1}): {str(e)}")
-            take_screenshot(sb, "select_tee_time_date")
-            if attempt < max_attempts - 1:
-                print("Retrying...")
-                time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                continue
-            return False
+def navigate_to_tee_sheet(sb, reservation_date, course, max_attempts=3):
+    """
+    Navigates directly to the tee sheet for a specific date and course.
+    Ensures the ForeTees tab is active and verifies the starting URL.
 
-def select_course(sb, course, max_attempts=3):
-    """Select the desired course from the dropdown menu"""
+    Args:
+        sb: The SeleniumBase browser instance.
+        reservation_date (str): The date for the reservation in "YYYY-MM-DD" format.
+        course (str): The name of the course (e.g., "Brookhaven", "Crabapple", "-ALL-").
+        max_attempts (int): Maximum number of attempts to navigate.
+    Returns:
+        bool: True if navigation was successful, False otherwise.
+    """
+    logging.info(f"Attempting to navigate to tee sheet for date: {reservation_date}, course: {course}")
+    member_select_url = "https://web.foretees.com/v5/capitalcityclub_golf_m56/Member_select"
+    base_sheet_url = "https://web.foretees.com/v5/capitalcityclub_golf_m56/Member_sheet"
+
     for attempt in range(max_attempts):
+        logging.info(f"Navigate_to_tee_sheet attempt {attempt + 1}/{max_attempts}")
         try:
-            # Ensure we're on the ForeTees tab
-            print("Ensuring we're on the ForeTees tab...")
-            for handle in sb.driver.window_handles:
-                sb.driver.switch_to.window(handle)
-                current_url = sb.get_current_url()
-                if "foretees.com" in current_url:
-                    print(f"Found and switched to ForeTees tab: {current_url}")
-                    break
+            # 1. Ensure we're on the ForeTees tab
+            logging.info("Ensuring current tab is ForeTees...")
+            foretees_tab_found = False
+            current_url = sb.get_current_url()
+            if "foretees.com" in current_url:
+                logging.info(f"Already on a ForeTees tab: {current_url}")
+                foretees_tab_found = True
             else:
-                print("Could not find ForeTees tab")
+                logging.info(f"Not on a ForeTees tab (current: {current_url}). Searching for ForeTees tab...")
+                original_handle = sb.driver.current_window_handle
+                for handle in sb.driver.window_handles:
+                    if handle == original_handle:
+                        continue
+                    try:
+                        sb.driver.switch_to.window(handle)
+                        current_url_switched = sb.get_current_url()
+                        logging.debug(f"Switched to handle {handle}, URL: {current_url_switched}")
+                        if "foretees.com" in current_url_switched:
+                            logging.info(f"Found and switched to ForeTees tab: {current_url_switched}")
+                            foretees_tab_found = True
+                            break 
+                    except Exception as e_switch:
+                        logging.warning(f"Could not switch to or get URL from handle {handle}: {e_switch}")
+                
+                if not foretees_tab_found:
+                    logging.warning("ForeTees tab not found among open tabs. Switching back to original tab.")
+                    sb.driver.switch_to.window(original_handle) # Switch back if no ForeTees tab found
+
+            if not foretees_tab_found:
+                logging.error("Failed to find or switch to a ForeTees tab.")
+                take_screenshot(sb, "navigate_tee_sheet_no_ft_tab")
                 if attempt < max_attempts - 1:
-                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+                    logging.info("Retrying to find ForeTees tab...")
+                    time.sleep(random.uniform(1.0, 2.0))
+                    if sb.driver: sb.refresh() # Refresh current page before retrying tab search
                     continue
                 return False
 
-            print("Waiting for course dropdown to load...")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+            time.sleep(random.uniform(0.5, 1.0)) # Brief pause after ensuring tab
+            current_url_on_ft_tab = sb.get_current_url()
+            logging.info(f"Confirmed on ForeTees tab. Current URL: {current_url_on_ft_tab}")
+
+            # 2. Check if on member_select_url (optional, as we navigate directly anyway)
+            if member_select_url not in current_url_on_ft_tab:
+                logging.warning(f"Not on the expected '{member_select_url}'. Current URL: {current_url_on_ft_tab}. Proceeding with direct navigation to tee sheet.")
+                take_screenshot(sb, "navigate_tee_sheet_not_on_announce")
+
+            # 3. Parse reservation_date and construct URL
+            logging.info(f"Parsing reservation date: {reservation_date}")
+            try:
+                year = int(reservation_date[:4])
+                month = int(reservation_date[5:7]) # Directly use the month number
+                day = int(reservation_date[8:10])
+                formatted_date_for_url = f"{month}/{day}/{year}"
+            except Exception as e_parse:
+                logging.error(f"Failed to parse reservation_date '{reservation_date}': {e_parse}")
+                return False # Cannot proceed without a valid date
             
-            # Find the course dropdown
-            course_selector = "select[name='course']"
-            if not sb.is_element_present(course_selector):
-                print("Course dropdown not found")
-                take_screenshot(sb, "course_dropdown_not_found")
+            logging.info(f"Formatted date for URL: {formatted_date_for_url}")
+
+            # Encode the formatted date for the URL parameter
+            encoded_date_for_url_param = formatted_date_for_url.replace('/', '%2F')
+            logging.info(f"URL-encoded date parameter for construction: calDate={encoded_date_for_url_param}")
+
+            target_url = f"{base_sheet_url}?calDate={encoded_date_for_url_param}&displayOpt=0&course={course}"
+            logging.info(f"Constructed target tee sheet URL to open: {target_url}")
+
+            # 4. Open the target URL
+            logging.info(f"Opening target tee sheet URL...")
+            sb.open(target_url)
+            # Increased wait time for the page to fully load and any JS to execute
+            time.sleep(random.uniform(3.0, 5.0)) 
+
+            # 5. Verify navigation
+            final_url = sb.get_current_url()
+            logging.info(f"Current URL after navigating to tee sheet: {final_url}")
+            
+            # For verification, expect plain slashes in calDate as sb.get_current_url() often decodes it.
+            expected_date_param_for_verification = f"calDate={formatted_date_for_url}" 
+            
+            if "Member_sheet" in final_url and expected_date_param_for_verification in final_url and course in final_url:
+                logging.info(f"Successfully navigated to the correct tee sheet. URL: {final_url}")
+                take_screenshot(sb, "navigate_tee_sheet_success")
+                return True
+            else:
+                logging.error(f"Failed to verify navigation to target tee sheet. Final URL: {final_url}. Expected date parameter containing '{expected_date_param_for_verification}' and course '{course}'. Note: sb.open() was called with URL-encoded date.")
+                take_screenshot(sb, "navigate_tee_sheet_nav_fail")
                 if attempt < max_attempts - 1:
-                    print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+                    logging.info("Retrying tee sheet navigation...")
+                    # As a precaution, could navigate to member_select_url first if retrying complex nav
+                    # sb.open(member_select_url)
+                    # time.sleep(random.uniform(1.0, 2.0))
                     continue
                 return False
-            
-            # Click the dropdown to open it
-            print("Clicking course dropdown...")
-            sb.click(course_selector)
-            time.sleep(3)
-            take_screenshot(sb, "after_course_dropdown_click")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            
-            # Map the course value to the dropdown option value
-            course_value = {
-                "Brookhaven": "Brookhaven",
-                "Crabapple": "Crabapple",
-                "ALL": "-ALL-"
-            }.get(course, "-ALL-")  # Default to ALL if course not recognized
-            
-            # Select the course using SeleniumBase's select_option_by_value
-            print(f"Selecting course: {course} (value: {course_value})")
-            sb.select_option_by_value(course_selector, course_value)
-            time.sleep(2)  # Wait for selection to take effect
-            take_screenshot(sb, "after_course_selection")
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            
-            # Wait for URL to update and verify selection by checking URL
-            wait_start = time.time()
-            url_verified = False
-            while time.time() - wait_start < 5:  # Wait up to 5 seconds for URL to update
-                current_url = sb.get_current_url()
-                print(f"Current URL: {current_url}")
-                
-                # Check if the course value appears in the URL
-                expected_url_param = f"course={course_value}"
-                if expected_url_param in current_url:
-                    print(f"URL verification successful - found {expected_url_param} in URL")
-                    url_verified = True
-                    break
-                
-                time.sleep(0.5)  # Short delay between URL checks
-            
-            if not url_verified:
-                print(f"Warning: Could not verify course selection in URL. Expected {course_value}, URL: {current_url}")
-                # Continue anyway since the selection might still have worked
-            
-            print(f"Successfully selected course: {course} (value: {course_value})")
-            return True
-            
+
         except Exception as e:
-            print(f"Error selecting course (attempt {attempt + 1}): {str(e)}")
-            take_screenshot(sb, "select_course_error")
-            if attempt < max_attempts - 1:
-                print(f"Retry attempt {attempt + 1} of {max_attempts}")
-                time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                continue
-            return False
+            logging.error(f"Exception during navigate_to_tee_sheet (attempt {attempt + 1}/{max_attempts}): {str(e)}", exc_info=True)
+            take_screenshot(sb, "navigate_tee_sheet_exception")
+            if sb.driver and attempt < max_attempts - 1:
+                try:
+                    current_url_on_error = sb.get_current_url()
+                    logging.info(f"Refreshing page ({current_url_on_error}) before retry...")
+                    sb.refresh()
+                    time.sleep(random.uniform(1.5, 2.5))
+                except Exception as e_refresh:
+                    logging.error(f"Failed to refresh browser during exception handling: {e_refresh}")
+            if attempt == max_attempts - 1:
+                 logging.error("Failed to navigate to tee sheet after all attempts due to repeated exceptions.")
+                 return False # Ensure False is returned on last attempt if exception occurs
+    
+    logging.error("Failed to navigate to tee sheet after exhausting all retry attempts (loop completed).")
+    return False
 
 def time_to_minutes(time_str):
     """Convert 'HH:MM AM/PM' to minutes since midnight"""
