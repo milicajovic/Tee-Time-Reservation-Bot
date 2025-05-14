@@ -66,6 +66,30 @@ class BlobStorageService:
             logging.error(f"Failed to upload screenshot: {str(e)}")
             raise
             
+    def upload_log_file(self, local_file_path, log_name):
+        """Upload a log file to blob storage in the correct attempt folder"""
+        try:
+            if not self.current_reservation_folder or self.current_attempt is None:
+                raise ValueError("No active reservation context")
+
+            # Generate blob name with folder structure
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            blob_name = f"{self.current_reservation_folder}/Attempt_{self.current_attempt}/{log_name}_{timestamp}.log"
+
+            # Upload the file with retry logic
+            def upload_operation():
+                blob_client = self.container_client.get_blob_client(blob_name)
+                with open(local_file_path, "rb") as data:
+                    blob_client.upload_blob(data, overwrite=True)
+                return blob_name
+
+            blob_name = self._retry_operation(upload_operation)
+            logging.info(f"Uploaded log file {blob_name} to blob storage")
+
+        except Exception as e:
+            logging.error(f"Failed to upload log file: {str(e)}")
+            raise
+            
     def get_reservation_folder_url(self):
         """Get the URL for the current reservation folder"""
         if self.current_reservation_folder:

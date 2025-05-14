@@ -6,15 +6,14 @@ from selenium.webdriver.common.by import By
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import sqlite3
 import sys
 from datetime import datetime
-import uuid
 import logging
 from .blob_storage import BlobStorageService
 import random
 import pytz
 import ntplib
+from .attempt_logger import AttemptLogger
 
 # Load environment variables
 load_dotenv()
@@ -279,6 +278,7 @@ def handle_foretees_navigation(sb, max_attempts=3):
                 break
         else:
             print("Could not find ForeTees tab")
+            take_screenshot(sb, "handle_foretees_navigation")
             return False
 
         # Wait for Alex Western button
@@ -502,18 +502,11 @@ class NoSlotWithinRange(Exception):
     """Raised when no tee time slots are available within the allowed range"""
     pass
 
-def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est):
-    """High-performance tee time selection with optimal speed
-    
-    This function strictly enforces the following criteria:
-    1. Only selects time slots with exactly 4 open positions
-    2. Only selects times between the desired time and desired time + time_slot_range minutes
-    3. Selects the earliest available time that meets criteria 1 and 2
-    4. If a time slot is taken, tries the next available slot within the range, always re-fetching elements after Go Back
-    """
-
+def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est, logger):
+    logger.log(f"START: select_tee_time for {desired_time} (+{time_slot_range})")
     target_min = time_to_minutes(desired_time)
     if target_min is None:
+        logger.log("Invalid desired_time format")
         raise ValueError("Invalid desired_time format")
     max_min = target_min + time_slot_range
 
@@ -522,31 +515,43 @@ def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est):
         f"contains(@class, 'openSlots4')]]//a[contains(@class, 'teetime_button')]"
     )
 
+    logger.log(f"Waiting until {refresh_time_est.strftime('%H:%M:%S')} EST")
     print(f"Waiting until {refresh_time_est.strftime('%H:%M:%S')} EST")
     wait_until_refresh_time(refresh_time_est)
-    print("Performing precision refresh")
-    sb.driver.refresh()
+    logger.log("Performing precision refresh")
+    refresh_start = time.time()
+    # sb.driver.refresh()
     sb.wait_for_element("div.rwdTr", timeout=5)
+    refresh_end = time.time()
+    logger.log_duration("Refresh and wait_for_element", refresh_start, refresh_end)
+    logger.log("Element 'div.rwdTr' found after refresh")
 
-    # Build the list of valid time strings in the range, sorted
     def get_valid_time_slots():
+        slot_search_start = time.time()
         elements = sb.find_elements(fast_xpath, by='xpath')
+        logger.log(f"Found {len(elements)} slot elements")
         slots = []
         for el in elements:
             time_str = el.text.strip()
             minutes = time_to_minutes(time_str)
+            logger.log(f"Slot element: '{time_str}', parsed minutes: {minutes}")
             if minutes and target_min <= minutes <= max_min:
                 slots.append((time_str, minutes))
         slots.sort(key=lambda x: x[1])
+        logger.log(f"Valid slots after time filtering: {[s[0] for s in slots]}")
+        slot_search_end = time.time()
+        logger.log_duration("Slot search", slot_search_start, slot_search_end)
         return slots
 
     tried_times = set()
     while True:
         valid_slots = get_valid_time_slots()
-        # Filter out already tried times
+        logger.log(f"tried_times before filtering: {tried_times}")
+        logger.log(f"Valid slots before tried_times filtering: {[s[0] for s in valid_slots]}")
         valid_slots = [slot for slot in valid_slots if slot[0] not in tried_times]
+        logger.log(f"Valid slots after tried_times filtering: {[s[0] for s in valid_slots]}")
         if not valid_slots:
-            # Universal XPath for any slot state
+            logger.log("No valid slots found, raising NoSlotWithinRange")
             row_xpath = (
                 f"//div[contains(@class, 'rwdTr')]"
                 f"//*[self::a or self::div[contains(@class, 'time_slot')]]"
@@ -557,10 +562,9 @@ def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est):
             sb.driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", parent_row)
             take_screenshot(sb, "no_available_slot_at_desired_time")    
             raise NoSlotWithinRange(f"All slots between {desired_time} and {max_min//60}:{max_min%60:02d} were taken or unavailable")
-        # Try the next available slot
         time_str, minutes = valid_slots[0]
+        logger.log(f"About to click slot: {time_str}")
         print(f"Attempting to select time slot: {minutes//60}:{minutes%60:02d}")
-        # Find the element for this time (must re-query to avoid stale refs)
         elements = sb.find_elements(fast_xpath, by='xpath')
         target_element = None
         for el in elements:
@@ -568,84 +572,123 @@ def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est):
                 target_element = el
                 break
         if not target_element:
+            logger.log(f"Could not find element for {time_str}, skipping...")
             print(f"Could not find element for {time_str}, skipping...")
             tried_times.add(time_str)
             continue
+        click_start = time.time()
         sb.driver.execute_script("arguments[0].click();", target_element)
+        click_end = time.time()
+        logger.log_duration(f"Click slot {time_str}", click_start, click_end)
         try:
-            success, status = handle_tee_time_popup(sb)
+            popup_start = time.time()
+            success, status = handle_tee_time_popup(sb, logger=logger)
+            popup_end = time.time()
+            logger.log_duration(f"handle_tee_time_popup for slot {time_str}", popup_start, popup_end)
+            logger.log(f"handle_tee_time_popup result: success={success}, status={status}")
         except Exception as e:
+            logger.log(f"Exception in handle_tee_time_popup: {e}")
             print(f"Exception in handle_tee_time_popup: {e}")
             tried_times.add(time_str)
             continue
         if success and status == 'continue':
+            logger.log(f"Successfully selected slot {minutes//60}:{minutes%60:02d}")
+            logger.log(f"END: select_tee_time")
             return True, f"{minutes//60}:{minutes%60:02d}"
         elif success and status == 'go_back':
+            logger.log(f"Time slot {minutes//60}:{minutes%60:02d} was taken, trying next available slot...")
             print(f"Time slot {minutes//60}:{minutes%60:02d} was taken, trying next available slot...")
             tried_times.add(time_str)
-            # Loop will re-fetch slots and try the next one
             continue
         else:
+            logger.log(f"Error handling time slot {minutes//60}:{minutes%60:02d}, trying next available slot...")
             print(f"Error handling time slot {minutes//60}:{minutes%60:02d}, trying next available slot...")
             tried_times.add(time_str)
             continue
 
-def handle_tee_time_popup(sb, max_attempts=3):
-    """Handle the pop-up dialog that appears after selecting a tee time
-    
-    Returns:
-        tuple: (success, status) where:
-            - success: bool indicating if the operation completed successfully
-            - status: str indicating the outcome:
-                - 'continue': Successfully clicked "Yes, Continue"
-                - 'go_back': Found and handled "Go Back" button
-                - 'error': Failed to handle the popup
-    """
+def handle_tee_time_popup(sb, logger, max_attempts=3):
+    logger.log("START: handle_tee_time_popup")
     for attempt in range(max_attempts):
+        attempt_start = time.time()
         try:
-            print("Waiting for tee time pop-up dialog to appear...")
+            logger.log(f"handle_tee_time_popup attempt {attempt+1}/{max_attempts}")
+            logger.log("Waiting for tee time pop-up dialog to appear...")
+            wait_start = time.time()
             time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            
-            # Wait for the dialog to appear
             if not sb.is_element_present(".ui-dialog.ui-widget"):
+                wait_end = time.time()
+                logger.log_duration("Wait for dialog to appear (not found)", wait_start, wait_end)
                 print("Dialog not found")
+                logger.log("Dialog not found")
                 if attempt < max_attempts - 1:
                     print("Retrying...")
+                    logger.log("Retrying...")
                     time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                     continue
+                logger.log("END: handle_tee_time_popup")
+                attempt_end = time.time()
+                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
                 return False, 'error'
-            
+            wait_end = time.time()
+            logger.log_duration("Wait for dialog to appear (found)", wait_start, wait_end)
             take_screenshot(sb, "popup_appeared")
-            
-            # Check for "Yes, Continue" button first
+            button_start = time.time()
             if sb.is_element_present("button:contains('Yes, Continue')"):
+                button_end = time.time()
+                logger.log_duration("Find 'Yes, Continue' button", button_start, button_end)
                 print("Clicking 'Yes, Continue' button...")
+                logger.log("Clicking 'Yes, Continue' button...")
+                click_start = time.time()
                 sb.click("button:contains('Yes, Continue')")
+                click_end = time.time()
+                logger.log_duration("Click 'Yes, Continue' button", click_start, click_end)
                 take_screenshot(sb, "after_popup_handling")
                 print("Successfully handled tee time pop-up")
+                logger.log("Successfully handled tee time pop-up")
+                logger.log("END: handle_tee_time_popup")
+                attempt_end = time.time()
+                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
                 return True, 'continue'
-            
-            # If "Yes, Continue" is not present, check for "Go Back"
-            if sb.is_element_present("button:contains('Go Back')"):
+            elif sb.is_element_present("button:contains('Go Back')"):
+                button_end = time.time()
+                logger.log_duration("Find 'Go Back' button", button_start, button_end)
                 print("Found 'Go Back' button - time slot was taken")
+                logger.log("Found 'Go Back' button - time slot was taken")
+                click_start = time.time()
                 sb.click("button:contains('Go Back')")
+                click_end = time.time()
+                logger.log_duration("Click 'Go Back' button", click_start, click_end)
                 take_screenshot(sb, "after_go_back_click")
+                logger.log("END: handle_tee_time_popup")
+                attempt_end = time.time()
+                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
                 return True, 'go_back'
-            
-            print("Neither 'Yes, Continue' nor 'Go Back' button found")
-            if attempt < max_attempts - 1:
-                print("Retrying...")
-                time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                continue
-            return False, 'error'
-            
+            else:
+                button_end = time.time()
+                logger.log_duration("Find neither button", button_start, button_end)
+                print("Neither 'Yes, Continue' nor 'Go Back' button found")
+                logger.log("Neither 'Yes, Continue' nor 'Go Back' button found")
+                if attempt < max_attempts - 1:
+                    print("Retrying...")
+                    logger.log("Retrying...")
+                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
+                    continue
+                logger.log("END: handle_tee_time_popup")
+                attempt_end = time.time()
+                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
+                return False, 'error'
         except Exception as e:
             print(f"Error handling tee time pop-up (attempt {attempt + 1}): {str(e)}")
+            logger.log(f"Error handling tee time pop-up (attempt {attempt + 1}): {str(e)}")
             take_screenshot(sb, "handle_tee_time_popup")
             if attempt < max_attempts - 1:
                 print("Retrying...")
+                logger.log("Retrying...")
                 time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
                 continue
+            logger.log("END: handle_tee_time_popup")
+            attempt_end = time.time()
+            logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
             return False, 'error'
 
 def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
@@ -1157,96 +1200,99 @@ def open_website(reservation_date, reservation_time, time_slot_range, course):
     # Reset screenshot counter for each attempt
     global _screenshot_counter
     _screenshot_counter = 0
-    
+
     # Calculate the refresh time using the utility function
     refresh_time = calculate_refresh_time()
-    
+
+    # Get reservation context for logging
+    reservation_folder = blob_service.current_reservation_folder
+    attempt = blob_service.current_attempt
+    logger = AttemptLogger(reservation_folder, attempt, blob_service)
+
     try:
         url = os.getenv('CLUB_URL')
-        print(f"Attempting to navigate to: {url}")
-                
+        logger.log(f"Attempting to navigate to: {url}")
         with SB(uc=True, xvfb=True) as sb:
-            # Verify captcha success and retry if needed
-            if not verify_captcha_success(sb, url):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to solve captcha after multiple attempts")
-            
-            print("Page loaded successfully. Looking for Member Login link...")
+            with logger.context("verify_captcha_success"):
+                if not verify_captcha_success(sb, url):
+                    logger.log("Captcha verification failed")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to solve captcha after multiple attempts")
+            logger.log("Page loaded successfully. Looking for Member Login link...")
             take_screenshot(sb, "main_page_loaded")
+            with logger.context("click_member_login"):
+                if not click_member_login(sb):
+                    logger.log("Failed to click Member Login link")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to click Member Login link after multiple attempts")
+            logger.log("Proceeding with login...")
+            with logger.context("handle_login"):
+                if not handle_login(sb):
+                    logger.log("Failed to complete login process")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to complete login process")
+            logger.log("Login successful. Proceeding to Fore Tees...")
+            with logger.context("click_fore_tees"):
+                if not click_fore_tees(sb):
+                    logger.log("Failed to navigate to Fore Tees")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to navigate to Fore Tees")
+            logger.log("Proceeding with ForeTees navigation...")
+            with logger.context("handle_foretees_navigation"):
+                if not handle_foretees_navigation(sb):
+                    logger.log("Failed to complete ForeTees navigation")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to complete ForeTees navigation")
             
-            # Try to click the Member Login link
-            if not click_member_login(sb):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to click Member Login link after multiple attempts")
-            
-            print("Proceeding with login...")
-            if not handle_login(sb):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to complete login process")
-            
-            print("Login successful. Proceeding to Fore Tees...")
-            if not click_fore_tees(sb):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to navigate to Fore Tees")
-            
-            print("Proceeding with ForeTees navigation...")
-            if not handle_foretees_navigation(sb):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to complete ForeTees navigation")
-            
-            print("Proceeding with date selection...")
-            if not select_tee_time_date(sb, reservation_date):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to select tee time date")
-            
-            print("Proceeding with course selection...")
-            if not select_course(sb, course):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to select course")
-            
-            print("Proceeding with tee time selection...")
+            # Call the new function to navigate directly to the tee sheet
+            logger.log(f"Navigating directly to tee sheet for date: {reservation_date}, course: {course}")
+            with logger.context("navigate_to_tee_sheet"):
+                if not navigate_to_tee_sheet(sb, reservation_date, course):
+                    # Detailed logging and screenshots are handled within navigate_to_tee_sheet
+                    logger.log(f"Failed to navigate directly to tee sheet for date: {reservation_date}, course: {course}. Check previous logs for details.")
+                    send_email(reservation_date, reservation_time, success=False) # Consistent with other failure emails
+                    raise Exception(f"Failed to navigate directly to tee sheet. Date: {reservation_date}, Course: {course}")
+            logger.log("Successfully navigated to tee sheet.")
+            time.sleep(random.uniform(1.0, 2.0)) # Pause for page to settle after navigation
+
+            logger.log("Proceeding with tee time selection...")
             try:
-                success, actual_time = select_tee_time(sb, reservation_time, time_slot_range, refresh_time)
+                with logger.context("select_tee_time"):
+                    success, actual_time = select_tee_time(sb, reservation_time, time_slot_range, refresh_time, logger)
                 if not success:
+                    logger.log("Failed to select tee time")
                     send_email(reservation_date, reservation_time, success=False)
                     raise Exception("Failed to select tee time")
             except NoSlotWithinRange as e:
+                logger.log(f"No available tee times within the allowed range: {str(e)}")
                 send_email(reservation_date, reservation_time, success=False)
                 raise Exception(f"No available tee times within the allowed range: {str(e)}")
-            
-            # Handle the pop-up dialog
-            # if not handle_tee_time_popup(sb):
-            #     send_email(reservation_date, reservation_time, success=False)
-            #     raise Exception("Failed to handle tee time pop-up")
-            
-            # Modify the player slot
-            print("Proceeding with player slot modification...")
-            if not modify_player_slot(sb):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to modify player slot")
-            
-            # Handle the confirmation popup
-            print("Proceeding with confirmation popup...")
-            if not handle_confirmation_popup(sb, reservation_time):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to handle confirmation popup")
-            
-            # Handle the logout process
-            print("Proceeding with logout...")
-            if not handle_logout(sb):
-                send_email(reservation_date, reservation_time, success=False)
-                raise Exception("Failed to complete logout process")
-            
-            print("Successfully completed all navigation steps")
+            logger.log("Proceeding with player slot modification...")
+            with logger.context("modify_player_slot"):
+                if not modify_player_slot(sb):
+                    logger.log("Failed to modify player slot")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to modify player slot")
+            logger.log("Proceeding with confirmation popup...")
+            with logger.context("handle_confirmation_popup"):
+                if not handle_confirmation_popup(sb, reservation_time):
+                    logger.log("Failed to handle confirmation popup")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to handle confirmation popup")
+            logger.log("Proceeding with logout...")
+            with logger.context("handle_logout"):
+                if not handle_logout(sb):
+                    logger.log("Failed to complete logout process")
+                    send_email(reservation_date, reservation_time, success=False)
+                    raise Exception("Failed to complete logout process")
+            logger.log("Successfully completed all navigation steps")
             sb.wait_for_element_present("body", timeout=2)  # Brief pause before closing
-            
-            # If we reach here, everything was successful
             send_email(reservation_date, reservation_time, actual_time, success=True)
-            
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        print(f"Error type: {type(e).__name__}")
+        logger.log(f"An error occurred: {str(e)} | Error type: {type(e).__name__}")
         raise
+    finally:
+        logger.close_and_upload()
 
 # This section is only for testing the script directly
 if __name__ == "__main__":
