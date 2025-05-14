@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, abort
 import os
 import logging
 from datetime import datetime, timedelta
@@ -27,9 +27,21 @@ logging.basicConfig(
 
 app = Flask(__name__)
 
+ALLOWED = set(os.getenv("GOOGLE_ALLOWED_EMAILS", "").split(","))
+
 def get_table_client():
     service_client = TableServiceClient.from_connection_string(conn_str=os.getenv("AZURE_STORAGE_CONNECTION_STRING"))
     return service_client.get_table_client(table_name=os.getenv("AZURE_STORAGE_TABLE_NAME"))
+
+@app.before_request
+def enforce_allowlist():
+    # Easy Auth will have already redirected anonymous users.
+    user_email = request.headers.get("X-MS-CLIENT-PRINCIPAL-NAME")
+    if not user_email:
+        return  # let Easy Auth bounce them to Google
+
+    if user_email not in ALLOWED:
+        abort(403)  # “Access denied”
 
 @app.route('/')
 def home():
