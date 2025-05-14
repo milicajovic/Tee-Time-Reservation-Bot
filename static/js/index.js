@@ -514,12 +514,11 @@ function displayAtlantaTimezone() {
 
 // Function to format date from YYYY-MM-DD to Month DDth, YYYY
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
+    // Parse the date parts directly to avoid timezone issues
+    const [year, month, day] = dateStr.split('-').map(Number);
+    
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                        'July', 'August', 'September', 'October', 'November', 'December'];
-    const day = date.getDate();
-    const month = monthNames[date.getMonth()];
-    const year = date.getFullYear();
     
     // Add the appropriate suffix to the day
     let suffix = 'th';
@@ -527,7 +526,7 @@ function formatDate(dateStr) {
     else if (day % 10 === 2 && day !== 12) suffix = 'nd';
     else if (day % 10 === 3 && day !== 13) suffix = 'rd';
     
-    return `${month} ${day}${suffix}, ${year}`;
+    return `${monthNames[month-1]} ${day}${suffix}, ${year}`;
 }
 
 // Function to format time from HH:MM AM/PM to HH:MM am/pm
