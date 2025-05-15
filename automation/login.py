@@ -428,7 +428,14 @@ def navigate_to_tee_sheet(sb, reservation_date, course, max_attempts=3):
             encoded_date_for_url_param = formatted_date_for_url.replace('/', '%2F')
             logging.info(f"URL-encoded date parameter for construction: calDate={encoded_date_for_url_param}")
 
-            target_url = f"{base_sheet_url}?calDate={encoded_date_for_url_param}&displayOpt=0&course={course}"
+            # Map the course value to the correct URL parameter
+            course_value = {
+                "Brookhaven": "Brookhaven",
+                "Crabapple": "Crabapple",
+                "ALL": "-ALL-"
+            }.get(course, "-ALL-")  # Default to -ALL- if course not recognized
+
+            target_url = f"{base_sheet_url}?calDate={encoded_date_for_url_param}&displayOpt=0&course={course_value}"
             logging.info(f"Constructed target tee sheet URL to open: {target_url}")
 
             # 4. Open the target URL
@@ -477,6 +484,10 @@ def navigate_to_tee_sheet(sb, reservation_date, course, max_attempts=3):
     logging.error("Failed to navigate to tee sheet after exhausting all retry attempts (loop completed).")
     return False
 
+class NoSlotWithinRange(Exception):
+    """Raised when no tee time slots are available within the allowed range"""
+    pass
+
 def time_to_minutes(time_str):
     """Convert 'HH:MM AM/PM' to minutes since midnight"""
     try:
@@ -486,21 +497,86 @@ def time_to_minutes(time_str):
         return None
 
 def wait_until_refresh_time(target_time_est):
-    """Precisely wait until target refresh time using server's EST time"""
+    """Wait until target EST time, checking up to 4×/sec."""
+    tz = pytz.timezone('America/New_York')
     while True:
-        now = datetime.now(pytz.timezone('America/New_York'))
+        now = datetime.now(tz)
         if now >= target_time_est:
-            break
-        # Sleep in small increments near the target time
+            return
         delta = (target_time_est - now).total_seconds()
-        sleep_time = min(delta, 0.25)  # Check 4x/sec near target time
-        time.sleep(sleep_time)
-        
-class NoSlotWithinRange(Exception):
-    """Raised when no tee time slots are available within the allowed range"""
-    pass
+        time.sleep(min(delta, 0.25))
+
+def handle_tee_time_popup(sb, logger, max_wait=2):
+    """
+    Poll every 50 ms for either popup button, click it via the exact
+    absolute XPath, and return (True, 'continue') or (True, 'go_back').
+    """
+    logger.log("START: handle_tee_time_popup")
+
+    # Debug‐log whether our XPaths actually match anything
+    yes_seen = sb.execute_script("""
+        return Boolean(
+          document.evaluate(
+            "/html/body/div[5]/div[4]/div/button[2]",
+            document, null,
+            XPathResult.BOOLEAN_TYPE,
+            null
+          ).booleanValue
+        );
+    """)
+    back_seen = sb.execute_script("""
+        return Boolean(
+          document.evaluate(
+            "/html/body/div[5]/div[4]/div/button",
+            document, null,
+            XPathResult.BOOLEAN_TYPE,
+            null
+          ).booleanValue
+        );
+    """)
+    logger.log(f"DEBUG popup-init – YesContinue seen? {yes_seen}  GoBack seen? {back_seen}")
+
+    deadline = time.time() + max_wait
+    while time.time() < deadline:
+        result = sb.execute_script("""
+            // 1) Try your exact XPath for “Yes, Continue”
+            var yes = document.evaluate(
+              "/html/body/div[5]/div[4]/div/button[2]",
+              document, null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null
+            ).singleNodeValue;
+            if (yes) { yes.click(); return 'continue'; }
+
+            // 2) Then try your XPath for “Go Back”
+            var back = document.evaluate(
+              "/html/body/div[5]/div[4]/div/button",
+              document, null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE,
+              null
+            ).singleNodeValue;
+            if (back) { back.click(); return 'go_back'; }
+
+            return null;
+        """)
+        if result in ('continue', 'go_back'):
+            logger.log(f"Popup handled with status: {result}")
+            logger.log("END: handle_tee_time_popup")
+            return True, result
+
+        time.sleep(0.05)
+
+    logger.log("Popup handling timed out")
+    logger.log("END: handle_tee_time_popup")
+    return False, 'error'
 
 def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est, logger):
+    """
+    1) Wait until refresh_time_est
+    2) JS-reload + wait for rows
+    3) Try exact-time click
+    4) Fallback to range-based loop
+    """
     logger.log(f"START: select_tee_time for {desired_time} (+{time_slot_range})")
     target_min = time_to_minutes(desired_time)
     if target_min is None:
@@ -508,186 +584,114 @@ def select_tee_time(sb, desired_time, time_slot_range, refresh_time_est, logger)
         raise ValueError("Invalid desired_time format")
     max_min = target_min + time_slot_range
 
+    # XPaths up front
     fast_xpath = (
-        f"//div[contains(@class, 'rwdTr')][.//div[contains(@class, 'slotCount') and "
-        f"contains(@class, 'openSlots4')]]//a[contains(@class, 'teetime_button')]"
+        "//div[contains(@class, 'rwdTr')]"
+        "[.//div[contains(@class, 'slotCount') and contains(@class, 'openSlots4')]]"
+        "//a[contains(@class, 'teetime_button')]"
     )
+    
+    # exact match by text
+    exact_xpath = f"{fast_xpath}[normalize-space(text())='{desired_time}']"
 
+    # fallback range-based uses the same fast_xpath
+    range_xpath = fast_xpath
+
+    # 1) Wait for unlock time
     logger.log(f"Waiting until {refresh_time_est.strftime('%H:%M:%S')} EST")
-    print(f"Waiting until {refresh_time_est.strftime('%H:%M:%S')} EST")
     wait_until_refresh_time(refresh_time_est)
-    logger.log("Performing precision refresh")
-    refresh_start = time.time()
-    # sb.driver.refresh()
-    sb.wait_for_element("div.rwdTr", timeout=5)
-    refresh_end = time.time()
-    logger.log_duration("Refresh and wait_for_element", refresh_start, refresh_end)
-    logger.log("Element 'div.rwdTr' found after refresh")
 
-    def get_valid_time_slots():
-        slot_search_start = time.time()
-        elements = sb.find_elements(fast_xpath, by='xpath')
-        logger.log(f"Found {len(elements)} slot elements")
-        slots = []
-        for el in elements:
-            time_str = el.text.strip()
-            minutes = time_to_minutes(time_str)
-            logger.log(f"Slot element: '{time_str}', parsed minutes: {minutes}")
-            if minutes and target_min <= minutes <= max_min:
-                slots.append((time_str, minutes))
-        slots.sort(key=lambda x: x[1])
-        logger.log(f"Valid slots after time filtering: {[s[0] for s in slots]}")
-        slot_search_end = time.time()
-        logger.log_duration("Slot search", slot_search_start, slot_search_end)
-        return slots
+    # 2) JS reload + wait for sheet rows
+    logger.log("Performing JS reload")
+    reload_start = time.time()
+    sb.execute_script("location.reload(true);") 
+    sb.wait_for_element("div.rwdTr", timeout=2)
+    time.sleep(0.1)  
+    logger.log_duration("JS reload + wait_for_element", reload_start, time.time())
 
-    tried_times = set()
-    while True:
-        valid_slots = get_valid_time_slots()
-        logger.log(f"tried_times before filtering: {tried_times}")
-        logger.log(f"Valid slots before tried_times filtering: {[s[0] for s in valid_slots]}")
-        valid_slots = [slot for slot in valid_slots if slot[0] not in tried_times]
-        logger.log(f"Valid slots after tried_times filtering: {[s[0] for s in valid_slots]}")
-        if not valid_slots:
-            logger.log("No valid slots found, raising NoSlotWithinRange")
-            row_xpath = (
-                f"//div[contains(@class, 'rwdTr')]"
-                f"//*[self::a or self::div[contains(@class, 'time_slot')]]"
-                f"[normalize-space(text())='{desired_time}']"
-                f"/ancestor::div[contains(@class, 'rwdTr')]"
-            )
-            parent_row = sb.find_element(row_xpath, by='xpath')            
-            sb.driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", parent_row)
-            take_screenshot(sb, "no_available_slot_at_desired_time")    
-            raise NoSlotWithinRange(f"All slots between {desired_time} and {max_min//60}:{max_min%60:02d} were taken or unavailable")
-        time_str, minutes = valid_slots[0]
-        logger.log(f"About to click slot: {time_str}")
-        print(f"Attempting to select time slot: {minutes//60}:{minutes%60:02d}")
-        elements = sb.find_elements(fast_xpath, by='xpath')
-        target_element = None
-        for el in elements:
-            if el.text.strip() == time_str:
-                target_element = el
-                break
-        if not target_element:
-            logger.log(f"Could not find element for {time_str}, skipping...")
-            print(f"Could not find element for {time_str}, skipping...")
-            tried_times.add(time_str)
-            continue
+    # Direct‐click attempt
+    try:
         click_start = time.time()
-        sb.driver.execute_script("arguments[0].click();", target_element)
-        click_end = time.time()
-        logger.log_duration(f"Click slot {time_str}", click_start, click_end)
-        try:
-            popup_start = time.time()
-            success, status = handle_tee_time_popup(sb, logger=logger)
-            popup_end = time.time()
-            logger.log_duration(f"handle_tee_time_popup for slot {time_str}", popup_start, popup_end)
-            logger.log(f"handle_tee_time_popup result: success={success}, status={status}")
-        except Exception as e:
-            logger.log(f"Exception in handle_tee_time_popup: {e}")
-            print(f"Exception in handle_tee_time_popup: {e}")
-            tried_times.add(time_str)
-            continue
-        if success and status == 'continue':
-            logger.log(f"Successfully selected slot {minutes//60}:{minutes%60:02d}")
-            logger.log(f"END: select_tee_time")
-            return True, f"{minutes//60}:{minutes%60:02d}"
-        elif success and status == 'go_back':
-            logger.log(f"Time slot {minutes//60}:{minutes%60:02d} was taken, trying next available slot...")
-            print(f"Time slot {minutes//60}:{minutes%60:02d} was taken, trying next available slot...")
-            tried_times.add(time_str)
-            continue
-        else:
-            logger.log(f"Error handling time slot {minutes//60}:{minutes%60:02d}, trying next available slot...")
-            print(f"Error handling time slot {minutes//60}:{minutes%60:02d}, trying next available slot...")
-            tried_times.add(time_str)
-            continue
+        sb.execute_script(
+            "var el = document.evaluate("
+            "arguments[0], document, null, "
+            "XPathResult.FIRST_ORDERED_NODE_TYPE, null"
+            ").singleNodeValue; if(el) el.click();",
+            exact_xpath
+        )
+        # give the browser a brief moment to show the popup
+        time.sleep(0.1)
 
-def handle_tee_time_popup(sb, logger, max_attempts=3):
-    logger.log("START: handle_tee_time_popup")
-    for attempt in range(max_attempts):
-        attempt_start = time.time()
-        try:
-            logger.log(f"handle_tee_time_popup attempt {attempt+1}/{max_attempts}")
-            logger.log("Waiting for tee time pop-up dialog to appear...")
-            wait_start = time.time()
-            time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-            if not sb.is_element_present(".ui-dialog.ui-widget"):
-                wait_end = time.time()
-                logger.log_duration("Wait for dialog to appear (not found)", wait_start, wait_end)
-                print("Dialog not found")
-                logger.log("Dialog not found")
-                if attempt < max_attempts - 1:
-                    print("Retrying...")
-                    logger.log("Retrying...")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                    continue
-                logger.log("END: handle_tee_time_popup")
-                attempt_end = time.time()
-                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
-                return False, 'error'
-            wait_end = time.time()
-            logger.log_duration("Wait for dialog to appear (found)", wait_start, wait_end)
-            take_screenshot(sb, "popup_appeared")
-            button_start = time.time()
-            if sb.is_element_present("button:contains('Yes, Continue')"):
-                button_end = time.time()
-                logger.log_duration("Find 'Yes, Continue' button", button_start, button_end)
-                print("Clicking 'Yes, Continue' button...")
-                logger.log("Clicking 'Yes, Continue' button...")
-                click_start = time.time()
-                sb.click("button:contains('Yes, Continue')")
-                click_end = time.time()
-                logger.log_duration("Click 'Yes, Continue' button", click_start, click_end)
-                take_screenshot(sb, "after_popup_handling")
-                print("Successfully handled tee time pop-up")
-                logger.log("Successfully handled tee time pop-up")
-                logger.log("END: handle_tee_time_popup")
-                attempt_end = time.time()
-                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
-                return True, 'continue'
-            elif sb.is_element_present("button:contains('Go Back')"):
-                button_end = time.time()
-                logger.log_duration("Find 'Go Back' button", button_start, button_end)
-                print("Found 'Go Back' button - time slot was taken")
-                logger.log("Found 'Go Back' button - time slot was taken")
-                click_start = time.time()
-                sb.click("button:contains('Go Back')")
-                click_end = time.time()
-                logger.log_duration("Click 'Go Back' button", click_start, click_end)
-                take_screenshot(sb, "after_go_back_click")
-                logger.log("END: handle_tee_time_popup")
-                attempt_end = time.time()
-                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
-                return True, 'go_back'
-            else:
-                button_end = time.time()
-                logger.log_duration("Find neither button", button_start, button_end)
-                print("Neither 'Yes, Continue' nor 'Go Back' button found")
-                logger.log("Neither 'Yes, Continue' nor 'Go Back' button found")
-                if attempt < max_attempts - 1:
-                    print("Retrying...")
-                    logger.log("Retrying...")
-                    time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                    continue
-                logger.log("END: handle_tee_time_popup")
-                attempt_end = time.time()
-                logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
-                return False, 'error'
-        except Exception as e:
-            print(f"Error handling tee time pop-up (attempt {attempt + 1}): {str(e)}")
-            logger.log(f"Error handling tee time pop-up (attempt {attempt + 1}): {str(e)}")
-            take_screenshot(sb, "handle_tee_time_popup")
-            if attempt < max_attempts - 1:
-                print("Retrying...")
-                logger.log("Retrying...")
-                time.sleep(random.uniform(0.8, 1.5))  # Random delay between 800-1500ms
-                continue
-            logger.log("END: handle_tee_time_popup")
-            attempt_end = time.time()
-            logger.log_duration(f"handle_tee_time_popup attempt {attempt+1}", attempt_start, attempt_end)
-            return False, 'error'
+        success, status = handle_tee_time_popup(sb, logger)
+        logger.log_duration(f"Direct click {desired_time}", click_start, time.time())
+        if success and status == 'continue':
+            logger.log("END: select_tee_time (exact)")
+            return True, desired_time
+    except Exception as e:
+        logger.log(f"Direct-click attempt failed: {e}")
+
+    # Fallback: range-based
+    logger.log("Falling back to range-based slot selection")
+
+    tried = set()
+    while True:
+        click_script = """
+            var xpath = arguments[0], targ = arguments[1], maxm = arguments[2], tried = arguments[3];
+            var snapshot = document.evaluate(
+              xpath, document, null,
+              XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null
+            );
+            var best = null, bestMin = Infinity, bestText = null;
+            for (var i = 0; i < snapshot.snapshotLength; i++) {
+                var el = snapshot.snapshotItem(i);
+                var txt = el.textContent.trim();
+                // parse "H:MM AM/PM"
+                var m = txt.match(/(\\d+):(\\d+)\\s*(AM|PM)/i);
+                if (!m) { continue; }
+                var h = parseInt(m[1],10), mm = parseInt(m[2],10), ap = m[3].toUpperCase();
+                if (ap === 'PM' && h < 12) { h += 12; }
+                if (ap === 'AM' && h === 12) { h = 0; }
+                var minutes = h*60 + mm;
+                if (
+                  minutes >= targ &&
+                  minutes <= maxm &&
+                  minutes < bestMin &&
+                  tried.indexOf(txt) === -1
+                ) {
+                    bestMin = minutes;
+                    best = el;
+                    bestText = txt;
+                }
+            }
+            if (best) {
+              best.click();
+              return bestText;
+            }
+            return null;
+        """
+        # run one JS pass to pick & click the best slot
+        chosen = sb.execute_script(
+            click_script,
+            range_xpath, target_min, max_min, list(tried)
+        )
+        logger.log(f"Fallback JS click returned: {chosen}")
+
+        if not chosen:
+            logger.log("No valid slots found in JS fallback → raising NoSlotWithinRange")
+            raise NoSlotWithinRange(
+                f"All slots between {desired_time} and "
+                f"{max_min//60}:{max_min%60:02d} were unavailable"
+            )
+
+        tried.add(chosen)
+        # give the modal a moment to render
+        time.sleep(0.05)
+
+        success, status = handle_tee_time_popup(sb, logger)
+        if success and status == 'continue':
+            logger.log("END: select_tee_time (fallback)")
+            return True, chosen
+        # otherwise loop again, JS will skip this one via our 'tried' array
 
 def set_slot_as_tbd_with_walk(sb, slot_number, max_attempts=3):
     """Helper function to set a specific slot as TBD and set transport to WLK"""
